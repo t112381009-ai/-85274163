@@ -1,58 +1,80 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>SPICECORE PRO | 結構穩定性分析系統</title>
+    <title>SPICECORE PRO | 結構穩定性與物理模擬介面</title>
     <style>
-        :root { --bg: #0d1117; --panel: #161b22; --accent: #f97316; --safe: #238636; --danger: #da3633; --text: #e6edf3; }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'JetBrains Mono', monospace; }
-        body { background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
-        
-        /* 控制面板 */
-        .sidebar { width: 340px; background: var(--panel); padding: 25px; border-right: 1px solid #30363d; display: flex; flex-direction: column; gap: 15px; z-index: 10; overflow-y: auto; }
-        .logo { font-size: 14px; color: var(--accent); font-weight: 800; border-bottom: 1px solid #30363d; padding-bottom: 15px; margin-bottom: 10px; }
-        .control-item { background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; border: 1px solid #30363d; }
-        label { display: block; font-size: 11px; color: #8b949e; margin-bottom: 8px; text-transform: uppercase; }
-        input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
-        .val-num { float: right; color: var(--accent); font-weight: bold; font-size: 14px; }
-
-        /* 中央模擬區 */
-        .main-stage { flex: 1; position: relative; background-image: radial-gradient(#21262d 1px, transparent 1px); background-size: 30px 30px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        
-        /* 【關鍵】連動主體結構 */
-        .bottle-container { position: relative; display: flex; flex-direction: column; align-items: center; transform-origin: bottom center; will-change: transform; }
-        .cap { background: #d2b48c; height: 45px; width: 90px; border-radius: 10px 10px 2px 2px; border-bottom: 4px solid rgba(0,0,0,0.2); z-index: 2; }
-        .glass-body { background: rgba(255,255,255,0.1); width: 85px; border: 2px solid rgba(255,255,255,0.3); border-radius: 2px 2px 15px 15px; backdrop-filter: blur(10px); position: relative; overflow: hidden; margin-top: -2px; }
-        .content-fill { position: absolute; bottom: 0; width: 100%; background: linear-gradient(to top, #4a3728, #5d4637); transition: height 0.2s; }
-
-        /* 數值大盤 */
-        .big-data { font-size: 72px; font-weight: 900; letter-spacing: -3px; margin-top: 20px; color: #fff; line-height: 1; }
-        .unit-label { font-size: 11px; color: #8b949e; letter-spacing: 2px; margin-top: 5px; }
-
-        /* 右側公式區 (連動妳的截圖風格) */
-        .data-panel { width: 360px; background: var(--panel); padding: 25px; border-left: 1px solid #30363d; overflow-y: auto; }
-        .formula-card { background: #0d1117; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid var(--accent); }
-        .math-title { font-size: 10px; color: #8b949e; margin-bottom: 8px; text-transform: uppercase; }
-        .math-exp { font-size: 16px; color: #58a6ff; margin-bottom: 5px; }
-        .math-res { font-size: 12px; color: #d1d5da; font-family: monospace; }
-        #alarm-text { color: var(--danger); font-weight: bold; text-align: center; margin-top: 10px; display: none; border: 1px solid var(--danger); padding: 10px; }
+        :root { --main-bg: #111418; --panel-bg: #1e2229; --active-orange: #f97316; --danger-red: #ef4444; --safe-green: #22c55e; --text-primary: #f8fafc; --text-secondary: #94a3b8; }
+        * { box-shadow: 0 0 1px #334155 inset; box-sizing: border-box; margin: 0; padding: 0; cursor: crosshair; }
+        body { font-family: 'JetBrains Mono', 'Segoe UI', sans-serif; background: var(--main-bg); color: var(--text-primary); padding: 20px; font-size: 13px; }
+        .header { display: flex; justify-content: space-between; border-bottom: 2px solid #334155; padding-bottom: 10px; margin-bottom: 15px; }
+        .logo { font-weight: bold; font-size: 16px; letter-spacing: 1px; color: var(--text-primary); }
+        .logo span { color: #f97316; font-size: 18px; }
+        .grid-container { display: grid; grid-template-columns: 250px 1fr 280px; gap: 15px; }
+        .panel { background: var(--panel-bg); border-radius: 6px; padding: 15px; border: 1px solid #334155; }
+        .panel-title { color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; font-size: 11px; }
+        .central-view { position: relative; border: 1px solid #334155; background-image: radial-gradient(#2a303b 1px, transparent 1px); background-size: 15px 15px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .bottle { width: 70px; transform-origin: bottom center; transition: transform 0.2s cubic-bezier(0.1, 0.7, 0.3, 1.0); }
+        .cap { background: #d2b48c; height: 35px; border-radius: 8px 8px 2px 2px; } /* 米色霧面頂蓋 */
+        .body { background: rgba(255,255,255,0.1); height: 120px; border: 1px solid rgba(255,255,255,0.4); border-radius: 2px 2px 10px 10px; backdrop-filter: blur(5px); } /* 透明罐身 */
+        input[type=range] { width: 100%; -webkit-appearance: none; background: #334155; height: 3px; accent-color: #f97316; }
+        .data-point { margin-bottom: 10px; }
+        .data-label { color: var(--text-secondary); }
+        .data-value { font-size: 18px; font-weight: bold; color: #f97316; }
+        .spilling-pepper { position: absolute; width: 3px; height: 3px; background: #222; border-radius: 50%; display: none; }
+        #status-bar { color: var(--safe-green); text-transform: uppercase; letter-spacing: 1px; }
+        #friction-text { color: #f97316; }
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <div class="logo">SPICECORE STRESS TEST v3.0</div>
-        <div class="control-item">
-            <label>1. 內容載重 Mass (kg) <span class="val-num" id="v1">5.0</span></label>
-            <input type="range" min="1" max="50" step="0.5" value="5" id="p1">
+    <div class="header"><div class="logo"><span>S</span> SPICECORE PRO</div><div>DEVICE STATUS: <span id="sync-status">Synced</span></div></div>
+    <div class="grid-container">
+        <div class="panel"><div class="panel-title">STRUCTURE INTEGRITY</div>
+            <div class="data-point"><div class="data-label">INTERNAL MASS (g)</div><div class="data-value">212.50</div></div>
+            <div class="data-point"><div class="data-label">BODY MATERIAL</div>Boro-Glass</div>
         </div>
-        <div class="control-item">
-            <label>2. 外部壓力 Force (N) <span class="val-num" id="v2">0</span></label>
-            <input type="range" min="0" max="1500" value="0" id="p2">
+        <div class="central-view panel" id="main-sim">
+            <div class="spilling-pepper" style="top: 30px; left: 45%; animation: spill 1s infinite;"></div>
+            <div class="spilling-pepper" style="top: 35px; left: 52%; animation: spill 1s infinite 0.3s;"></div>
+            <div class="spilling-pepper" style="top: 40px; left: 48%; animation: spill 1s infinite 0.6s;"></div>
+            <div class="bottle" id="bottle"><div class="cap"></div><div class="body"></div></div>
         </div>
-        <div class="control-item">
-            <label>3. 操作扭力 Torque (Nm) <span class="val-num" id="v3">0</span></label>
-            <input type="range" min="0" max="300" value="0" id="p3">
+        <div class="panel"><div class="panel-title">PHYSICS CALIBRATION</div>
+            <p class="data-label">DISPENSE LOGIC / PRESSURE APPLIED (g)</p>
+            <input type="range" min="0" max="1500" value="0" id="pressure">
+            <div class="data-label" style="text-align: right;"><span id="pressure-val">0</span> g</div>
+            <div class="data-label" style="margin-top: 15px;">Friction Calibration: <span id="friction-text">0.25 μ</span></div>
         </div>
-        <div class="control-item">
-            <label>4. 罐身高度 Length (mm) <span class="val-num" id="v4">200</span></label>
-            <input type="range" min="100
+    </div>
+    <div id="status-bar" style="text-align: center; margin-top: 20px;"> LIVE MONITORING ENABLED</div>
+    <script>
+        const pressure = document.getElementById('pressure');
+        const bottle = document.getElementById('bottle');
+        const spillParticles = document.querySelectorAll('.spilling-pepper');
+        const frictionText = document.getElementById('friction-text');
+        const statusBar = document.getElementById('status-bar');
+
+        pressure.oninput = function() {
+            let pVal = this.value;
+            document.getElementById('pressure-val').innerText = pVal;
+            // 模擬傾斜：壓力大於 800g 時，罐子會開始歪
+            if(pVal > 800) {
+                let tiltAngle = (pVal - 800) / 7;
+                bottle.style.transform = `rotate(${tiltAngle}deg)`;
+                frictionText.innerText = (0.25 + (pVal / 15000)).toFixed(2) + " μ";
+                // 警報狀態
+                statusBar.innerText = "";
+                statusBar.style.color = "#ef4444";
+            } else {
+                bottle.style.transform = "rotate(0deg)";
+                frictionText.innerText = "0.25 μ";
+                statusBar.innerText = " LIVE MONITORING ENABLED";
+                statusBar.style.color = "#22c55e";
+            }
+            // 模擬灑出：壓力大於 1200g 時，胡椒粉出現
+            if(pVal > 1200) { spillParticles.forEach(p => p.style.display = 'block'); }
+            else { spillParticles.forEach(p => p.style.display = 'none'); }
+        };
+    </script>
+</body>
+</html>
