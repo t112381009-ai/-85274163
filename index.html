@@ -1,80 +1,133 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>SPICECORE PRO | 結構穩定性與物理模擬介面</title>
+    <title>SPICECORE PRO | 結構穩定性分析系統</title>
     <style>
-        :root { --main-bg: #111418; --panel-bg: #1e2229; --active-orange: #f97316; --danger-red: #ef4444; --safe-green: #22c55e; --text-primary: #f8fafc; --text-secondary: #94a3b8; }
-        * { box-shadow: 0 0 1px #334155 inset; box-sizing: border-box; margin: 0; padding: 0; cursor: crosshair; }
-        body { font-family: 'JetBrains Mono', 'Segoe UI', sans-serif; background: var(--main-bg); color: var(--text-primary); padding: 20px; font-size: 13px; }
-        .header { display: flex; justify-content: space-between; border-bottom: 2px solid #334155; padding-bottom: 10px; margin-bottom: 15px; }
-        .logo { font-weight: bold; font-size: 16px; letter-spacing: 1px; color: var(--text-primary); }
-        .logo span { color: #f97316; font-size: 18px; }
-        .grid-container { display: grid; grid-template-columns: 250px 1fr 280px; gap: 15px; }
-        .panel { background: var(--panel-bg); border-radius: 6px; padding: 15px; border: 1px solid #334155; }
-        .panel-title { color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; font-size: 11px; }
-        .central-view { position: relative; border: 1px solid #334155; background-image: radial-gradient(#2a303b 1px, transparent 1px); background-size: 15px 15px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        .bottle { width: 70px; transform-origin: bottom center; transition: transform 0.2s cubic-bezier(0.1, 0.7, 0.3, 1.0); }
-        .cap { background: #d2b48c; height: 35px; border-radius: 8px 8px 2px 2px; } /* 米色霧面頂蓋 */
-        .body { background: rgba(255,255,255,0.1); height: 120px; border: 1px solid rgba(255,255,255,0.4); border-radius: 2px 2px 10px 10px; backdrop-filter: blur(5px); } /* 透明罐身 */
-        input[type=range] { width: 100%; -webkit-appearance: none; background: #334155; height: 3px; accent-color: #f97316; }
-        .data-point { margin-bottom: 10px; }
-        .data-label { color: var(--text-secondary); }
-        .data-value { font-size: 18px; font-weight: bold; color: #f97316; }
-        .spilling-pepper { position: absolute; width: 3px; height: 3px; background: #222; border-radius: 50%; display: none; }
-        #status-bar { color: var(--safe-green); text-transform: uppercase; letter-spacing: 1px; }
-        #friction-text { color: #f97316; }
+        :root { --bg: #0b0e14; --panel: #161b22; --accent: #f97316; --safe: #22c55e; --danger: #f43f5e; --text: #e6edf3; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* 左側控制面板 */
+        .sidebar { width: 320px; background: var(--panel); padding: 25px; border-right: 1px solid #30363d; display: flex; flex-direction: column; gap: 20px; }
+        .logo { font-size: 1.2rem; font-weight: 800; letter-spacing: 2px; color: var(--accent); border-bottom: 2px solid #30363d; padding-bottom: 10px; }
+        .control-group { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; }
+        label { display: block; font-size: 12px; color: #8b949e; margin-bottom: 8px; }
+        input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+        .val-display { float: right; color: var(--accent); font-weight: bold; }
+
+        /* 中間模擬區 */
+        .viewport { flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; background-image: radial-gradient(#30363d 1px, transparent 1px); background-size: 30px 30px; }
+        .status-badge { position: absolute; top: 20px; left: 20px; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; border: 1px solid var(--safe); color: var(--safe); }
+        .bottle-stage { width: 100px; height: 250px; position: relative; transform-origin: bottom center; transition: 0.1s; }
+        .cap { background: #d2b48c; height: 40px; border-radius: 10px 10px 2px 2px; }
+        .glass-body { background: rgba(255,255,255,0.05); height: 160px; border: 2px solid rgba(255,255,255,0.2); border-radius: 2px 2px 15px 15px; backdrop-filter: blur(8px); position: relative; overflow: hidden; }
+        .pepper-content { position: absolute; bottom: 0; width: 100%; background: #3d2b1f; transition: 0.3s; }
+        
+        /* 右側物理公式區 */
+        .formula-panel { width: 350px; background: var(--panel); padding: 25px; border-left: 1px solid #30363d; font-family: 'Courier New', monospace; }
+        .formula-card { background: #0d1117; padding: 15px; border-radius: 6px; margin-bottom: 15px; border-left: 4px solid var(--accent); }
+        .math { font-size: 18px; margin: 10px 0; color: #58a6ff; }
+        
+        /* 警報效果 */
+        .critical { animation: shake 0.2s infinite; }
+        @keyframes shake { 0% { transform: translate(1px, 1px); } 50% { transform: translate(-1px, -1px); } 100% { transform: translate(1px, -1px); } }
     </style>
 </head>
 <body>
-    <div class="header"><div class="logo"><span>S</span> SPICECORE PRO</div><div>DEVICE STATUS: <span id="sync-status">Synced</span></div></div>
-    <div class="grid-container">
-        <div class="panel"><div class="panel-title">STRUCTURE INTEGRITY</div>
-            <div class="data-point"><div class="data-label">INTERNAL MASS (g)</div><div class="data-value">212.50</div></div>
-            <div class="data-point"><div class="data-label">BODY MATERIAL</div>Boro-Glass</div>
+    <div class="sidebar">
+        <div class="logo">DESIGN SAFETY LAB</div>
+        <div class="control-group">
+            <label>載重 P (kg) <span class="val-display" id="w-val">5.0</span></label>
+            <input type="range" min="1" max="50" step="0.5" value="5" id="weight">
         </div>
-        <div class="central-view panel" id="main-sim">
-            <div class="spilling-pepper" style="top: 30px; left: 45%; animation: spill 1s infinite;"></div>
-            <div class="spilling-pepper" style="top: 35px; left: 52%; animation: spill 1s infinite 0.3s;"></div>
-            <div class="spilling-pepper" style="top: 40px; left: 48%; animation: spill 1s infinite 0.6s;"></div>
-            <div class="bottle" id="bottle"><div class="cap"></div><div class="body"></div></div>
+        <div class="control-group">
+            <label>長度 L (mm) <span class="val-display" id="l-val">150</span></label>
+            <input type="range" min="50" max="500" value="150" id="length">
         </div>
-        <div class="panel"><div class="panel-title">PHYSICS CALIBRATION</div>
-            <p class="data-label">DISPENSE LOGIC / PRESSURE APPLIED (g)</p>
-            <input type="range" min="0" max="1500" value="0" id="pressure">
-            <div class="data-label" style="text-align: right;"><span id="pressure-val">0</span> g</div>
-            <div class="data-label" style="margin-top: 15px;">Friction Calibration: <span id="friction-text">0.25 μ</span></div>
+        <div class="control-group">
+            <label>側向施力 F (N) <span class="val-display" id="f-val">0</span></label>
+            <input type="range" min="0" max="200" value="0" id="force">
         </div>
     </div>
-    <div id="status-bar" style="text-align: center; margin-top: 20px;"> LIVE MONITORING ENABLED</div>
-    <script>
-        const pressure = document.getElementById('pressure');
-        const bottle = document.getElementById('bottle');
-        const spillParticles = document.querySelectorAll('.spilling-pepper');
-        const frictionText = document.getElementById('friction-text');
-        const statusBar = document.getElementById('status-bar');
 
-        pressure.oninput = function() {
-            let pVal = this.value;
-            document.getElementById('pressure-val').innerText = pVal;
-            // 模擬傾斜：壓力大於 800g 時，罐子會開始歪
-            if(pVal > 800) {
-                let tiltAngle = (pVal - 800) / 7;
-                bottle.style.transform = `rotate(${tiltAngle}deg)`;
-                frictionText.innerText = (0.25 + (pVal / 15000)).toFixed(2) + " μ";
-                // 警報狀態
-                statusBar.innerText = "";
-                statusBar.style.color = "#ef4444";
+    <div class="viewport" id="v-port">
+        <div class="status-badge" id="status">✔ 結構安全穩定</div>
+        <div class="bottle-stage" id="bottle">
+            <div class="cap"></div>
+            <div class="glass-body">
+                <div class="pepper-content" id="pepper-fill" style="height: 40%;"></div>
+            </div>
+        </div>
+        <h2 id="real-time-val" style="font-size: 4rem; margin-top: 30px; letter-spacing: -2px;">0.00</h2>
+        <p style="color: var(--text-secondary);">REAL-WORLD DEFLECTION (Δ)</p>
+    </div>
+
+    <div class="formula-panel">
+        <p style="color: #8b949e; font-size: 11px;">STEP 01: 慣性矩計算</p>
+        <div class="formula-card">
+            <div class="math">I = (b * h³) / 12</div>
+            <div id="math-1" style="font-size: 12px; color: #8b949e;">I = (70 * 160³) / 12 = ...</div>
+        </div>
+        <p style="color: #8b949e; font-size: 11px;">STEP 02: 轉矩分析 (Torque)</p>
+        <div class="formula-card">
+            <div class="math">τ = F * L</div>
+            <div id="math-2" style="font-size: 12px; color: #8b949e;">τ = 0 * 150 = 0 Nm</div>
+        </div>
+        <div id="alert-box" style="padding: 20px; border-radius: 6px; text-align: center; font-weight: bold; display: none;">
+            ⚠️ 結構崩潰 / 超載報警
+        </div>
+    </div>
+
+    <script>
+        const inputs = ['weight', 'length', 'force'];
+        const bottle = document.getElementById('bottle');
+        const status = document.getElementById('status');
+        const alertBox = document.getElementById('alert-box');
+
+        function update() {
+            const P = parseFloat(document.getElementById('weight').value);
+            const L = parseFloat(document.getElementById('length').value);
+            const F = parseFloat(document.getElementById('force').value);
+
+            // 更新顯示數值
+            document.getElementById('w-val').innerText = P.toFixed(1);
+            document.getElementById('l-val').innerText = L;
+            document.getElementById('f-val').innerText = F;
+
+            // 物理計算邏輯
+            const torque = (F * L / 1000).toFixed(2);
+            const deflection = (torque * 15.5).toFixed(2); // 模擬位移公式
+            document.getElementById('real-time-val').innerText = deflection;
+
+            // 更新右側公式內容
+            document.getElementById('math-2').innerText = `τ = ${F} * ${L} = ${torque} Nm`;
+
+            // 動態視覺反饋
+            const angle = F * 0.2;
+            bottle.style.transform = `rotate(${angle}deg)`;
+            document.getElementById('pepper-fill').style.height = `${Math.min(P * 2, 100)}%`;
+
+            // 警報邏輯 (參考截圖中的紅色報警)
+            if (deflection > 150) {
+                document.body.style.boxShadow = "inset 0 0 100px rgba(244, 63, 94, 0.3)";
+                status.innerText = "✖ CRITICAL FAILURE";
+                status.style.borderColor = "var(--danger)";
+                status.style.color = "var(--danger)";
+                alertBox.style.display = "block";
+                alertBox.style.background = "var(--danger)";
+                bottle.classList.add('critical');
             } else {
-                bottle.style.transform = "rotate(0deg)";
-                frictionText.innerText = "0.25 μ";
-                statusBar.innerText = " LIVE MONITORING ENABLED";
-                statusBar.style.color = "#22c55e";
+                document.body.style.boxShadow = "none";
+                status.innerText = "✔ 結構安全穩定";
+                status.style.borderColor = "var(--safe)";
+                status.style.color = "var(--safe)";
+                alertBox.style.display = "none";
+                bottle.classList.remove('critical');
             }
-            // 模擬灑出：壓力大於 1200g 時，胡椒粉出現
-            if(pVal > 1200) { spillParticles.forEach(p => p.style.display = 'block'); }
-            else { spillParticles.forEach(p => p.style.display = 'none'); }
-        };
+        }
+
+        inputs.forEach(id => document.getElementById(id).oninput = update);
+        update();
     </script>
 </body>
 </html>
