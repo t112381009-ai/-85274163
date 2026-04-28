@@ -1,110 +1,49 @@
-let pressureSlider, volumeSlider, tiltSlider, diameterSlider, heightSlider;
-
-let jarAngle = 0;
-let statusText = "";
-
-function setup() {
-  createCanvas(900, 600);
-
-  // 1 外部壓力
-  pressureSlider = createSlider(0, 100, 30);
-  pressureSlider.position(20, 20);
-
-  // 2 內部容量
-  volumeSlider = createSlider(0, 100, 50);
-  volumeSlider.position(20, 60);
-
-  // 3 傾斜角
-  tiltSlider = createSlider(0, 90, 0);
-  tiltSlider.position(20, 100);
-
-  // 4 直徑
-  diameterSlider = createSlider(30, 150, 80);
-  diameterSlider.position(20, 140);
-
-  // 5 高度
-  heightSlider = createSlider(50, 220, 120);
-  heightSlider.position(20, 180);
-}
-
-function draw() {
-  background(245);
-
-  // ===== 參數 =====
-  let pressure = pressureSlider.value();
-  let volume = volumeSlider.value();
-  let tilt = tiltSlider.value();
-  let diameter = diameterSlider.value();
-  let height = heightSlider.value();
-
-  // ===== 力學模型（核心）=====
-  // 重心影響（高度越高越不穩）
-  let heightFactor = map(height, 50, 220, 0, 40);
-
-  // 底盤穩定性（直徑越大越穩）
-  let baseStability = map(diameter, 30, 150, 40, 0);
-
-  // 內容重量（容量越多越重但可能更穩）
-  let volumeEffect = map(volume, 0, 100, -10, 20);
-
-  // 外力干擾
-  let pressureEffect = map(pressure, 0, 100, 0, 40);
-
-  // 綜合不穩定值
-  let instability =
-    tilt +
-    pressureEffect +
-    heightFactor -
-    baseStability +
-    volumeEffect;
-
-  // ===== 狀態判斷 =====
-  if (instability > 80) {
-    jarAngle = lerp(jarAngle, radians(50), 0.05);
-    statusText = "❌ 系統失衡：調味罐傾倒";
-  } else if (instability > 40) {
-    jarAngle = lerp(jarAngle, radians(15), 0.05);
-    statusText = "⚠️ 不穩定：晃動中";
-  } else {
-    jarAngle = lerp(jarAngle, 0, 0.05);
-    statusText = "✅ 穩定：可正常使用";
-  }
-
-  // ===== 畫調味罐 =====
-  push();
-  translate(width / 2, height / 2);
-  rotate(jarAngle);
-
-  // 主體（依直徑與高度變化）
-  fill(220, 200, 170);
-  rect(-diameter / 2, -height / 2, diameter, height, 12);
-
-  // 上蓋
-  fill(160, 120, 80);
-  rect(-diameter / 3, -height / 2 - 20, diameter * 0.66, 20, 5);
-
-  pop();
-
-  // ===== UI =====
-  fill(0);
-  textSize(14);
-
-  text("外部壓力: " + pressure, 220, 30);
-  text("內部容量: " + volume, 220, 70);
-  text("傾斜角度: " + tilt, 220, 110);
-  text("直徑尺寸: " + diameter, 220, 150);
-  text("高度尺寸: " + height, 220, 190);
-
-  // ===== 狀態顯示 =====
-  textSize(20);
-  text(statusText, 20, 260);
-
-  // 成功/失敗提示
-  if (instability > 80) {
-    fill(200, 0, 0);
-    text("❌ FAILURE：產品設計不穩定", 20, 310);
-  } else if (instability < 25) {
-    fill(0, 150, 0);
-    text("🏆 SUCCESS：最佳使用狀態", 20, 310);
-  }
-}
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>調味罐力學模擬 APP</title>
+  <style>
+    body { font-family: sans-serif; background: #0f172a; color: white; text-align: center; padding: 20px; }
+    .card { background: #1e293b; padding: 20px; border-radius: 15px; width: 300px; margin: auto; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+    .bottle-box { height: 180px; display: flex; align-items: flex-end; justify-content: center; margin-bottom: 20px; }
+    .bottle { width: 60px; transform-origin: bottom center; transition: transform 0.2s; }
+    .cap { background: #d2b48c; height: 30px; border-radius: 5px 5px 0 0; } /* 米色蓋子 */
+    .body-part { background: rgba(255,255,255,0.2); height: 100px; border: 1px solid white; border-radius: 0 0 5px 5px; } /* 透明罐身 */
+    input { width: 100%; margin: 10px 0; }
+    .status { padding: 10px; border-radius: 5px; margin-top: 10px; font-weight: bold; }
+    .safe { background: #064e3b; color: #6ee7b7; }
+    .danger { background: #7f1d1d; color: #fca5a5; }
+  </style>
+</head>
+<body>
+  <h1>🍶 力學模擬測試</h1>
+  <div class="card">
+    <div class="bottle-box">
+      <div class="bottle" id="bottle">
+        <div class="cap"></div>
+        <div class="body-part"></div>
+      </div>
+    </div>
+    <p>重心高度: <span id="h-txt">150</span>mm</p>
+    <input type="range" min="100" max="400" value="150" id="h-in">
+    <p>底部重量: <span id="w-txt">3</span>kg</p>
+    <input type="range" min="1" max="10" value="3" id="w-in">
+    <div id="msg" class="status safe">結構穩定</div>
+  </div>
+  <script>
+    const hIn = document.getElementById('h-in'), wIn = document.getElementById('w-in');
+    const b = document.getElementById('bottle'), m = document.getElementById('msg');
+    function v() {
+      let h = hIn.value, w = wIn.value;
+      document.getElementById('h-txt').innerText = h;
+      document.getElementById('w-txt').innerText = w;
+      let r = h / w; 
+      b.style.transform = `rotate(${(r-50)*0.2}deg)`;
+      if(r > 100) { m.innerText = "⚠️ 重心過高：不穩定"; m.className = "status danger"; }
+      else { m.innerText = "✔ 結構穩定"; m.className = "status safe"; }
+    }
+    hIn.oninput = v; wIn.oninput = v;
+  </script>
+</body>
+</html>
