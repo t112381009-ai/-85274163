@@ -1,80 +1,43 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-    <meta charset="UTF-8">
-    <title>SPICECORE PRO | 結構穩定性與物理模擬介面</title>
-    <style>
-        :root { --main-bg: #111418; --panel-bg: #1e2229; --active-orange: #f97316; --danger-red: #ef4444; --safe-green: #22c55e; --text-primary: #f8fafc; --text-secondary: #94a3b8; }
-        * { box-shadow: 0 0 1px #334155 inset; box-sizing: border-box; margin: 0; padding: 0; cursor: crosshair; }
-        body { font-family: 'JetBrains Mono', 'Segoe UI', sans-serif; background: var(--main-bg); color: var(--text-primary); padding: 20px; font-size: 13px; }
-        .header { display: flex; justify-content: space-between; border-bottom: 2px solid #334155; padding-bottom: 10px; margin-bottom: 15px; }
-        .logo { font-weight: bold; font-size: 16px; letter-spacing: 1px; color: var(--text-primary); }
-        .logo span { color: #f97316; font-size: 18px; }
-        .grid-container { display: grid; grid-template-columns: 250px 1fr 280px; gap: 15px; }
-        .panel { background: var(--panel-bg); border-radius: 6px; padding: 15px; border: 1px solid #334155; }
-        .panel-title { color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; font-size: 11px; }
-        .central-view { position: relative; border: 1px solid #334155; background-image: radial-gradient(#2a303b 1px, transparent 1px); background-size: 15px 15px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        .bottle { width: 70px; transform-origin: bottom center; transition: transform 0.2s cubic-bezier(0.1, 0.7, 0.3, 1.0); }
-        .cap { background: #d2b48c; height: 35px; border-radius: 8px 8px 2px 2px; } /* 米色霧面頂蓋 */
-        .body { background: rgba(255,255,255,0.1); height: 120px; border: 1px solid rgba(255,255,255,0.4); border-radius: 2px 2px 10px 10px; backdrop-filter: blur(5px); } /* 透明罐身 */
-        input[type=range] { width: 100%; -webkit-appearance: none; background: #334155; height: 3px; accent-color: #f97316; }
-        .data-point { margin-bottom: 10px; }
-        .data-label { color: var(--text-secondary); }
-        .data-value { font-size: 18px; font-weight: bold; color: #f97316; }
-        .spilling-pepper { position: absolute; width: 3px; height: 3px; background: #222; border-radius: 50%; display: none; }
-        #status-bar { color: var(--safe-green); text-transform: uppercase; letter-spacing: 1px; }
-        #friction-text { color: #f97316; }
-    </style>
+  <meta charset="UTF-8">
+  <title>調味罐力學模擬 APP</title>
+  <style>
+    body { font-family: sans-serif; background: #0f172a; color: white; text-align: center; padding: 20px; }
+    .card { background: #1e293b; padding: 25px; border-radius: 20px; width: 300px; margin: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    .bottle-box { height: 200px; display: flex; align-items: flex-end; justify-content: center; margin-bottom: 20px; }
+    .bottle { width: 70px; transform-origin: bottom center; transition: transform 0.2s; }
+    .cap { background: #d2b48c; height: 35px; border-radius: 8px 8px 2px 2px; } /* 米色蓋子 */
+    .body { background: rgba(255,255,255,0.15); height: 110px; border: 2px solid rgba(255,255,255,0.4); border-radius: 2px 2px 10px 10px; backdrop-filter: blur(5px); } /* 透明罐身 */
+    input { width: 100%; margin: 15px 0; accent-color: #d2b48c; }
+    .status { padding: 12px; border-radius: 8px; margin-top: 15px; font-weight: bold; }
+    .safe { background: #064e3b; color: #6ee7b7; }
+    .danger { background: #7f1d1d; color: #fca5a5; }
+  </style>
 </head>
 <body>
-    <div class="header"><div class="logo"><span>S</span> SPICECORE PRO</div><div>DEVICE STATUS: <span id="sync-status">Synced</span></div></div>
-    <div class="grid-container">
-        <div class="panel"><div class="panel-title">STRUCTURE INTEGRITY</div>
-            <div class="data-point"><div class="data-label">INTERNAL MASS (g)</div><div class="data-value">212.50</div></div>
-            <div class="data-point"><div class="data-label">BODY MATERIAL</div>Boro-Glass</div>
-        </div>
-        <div class="central-view panel" id="main-sim">
-            <div class="spilling-pepper" style="top: 30px; left: 45%; animation: spill 1s infinite;"></div>
-            <div class="spilling-pepper" style="top: 35px; left: 52%; animation: spill 1s infinite 0.3s;"></div>
-            <div class="spilling-pepper" style="top: 40px; left: 48%; animation: spill 1s infinite 0.6s;"></div>
-            <div class="bottle" id="bottle"><div class="cap"></div><div class="body"></div></div>
-        </div>
-        <div class="panel"><div class="panel-title">PHYSICS CALIBRATION</div>
-            <p class="data-label">DISPENSE LOGIC / PRESSURE APPLIED (g)</p>
-            <input type="range" min="0" max="1500" value="0" id="pressure">
-            <div class="data-label" style="text-align: right;"><span id="pressure-val">0</span> g</div>
-            <div class="data-label" style="margin-top: 15px;">Friction Calibration: <span id="friction-text">0.25 μ</span></div>
-        </div>
+  <h1>🍶 產品力學穩定度模擬</h1>
+  <div class="card">
+    <div class="bottle-box">
+      <div class="bottle" id="bottle"><div class="cap"></div><div class="body"></div></div>
     </div>
-    <div id="status-bar" style="text-align: center; margin-top: 20px;"> LIVE MONITORING ENABLED</div>
-    <script>
-        const pressure = document.getElementById('pressure');
-        const bottle = document.getElementById('bottle');
-        const spillParticles = document.querySelectorAll('.spilling-pepper');
-        const frictionText = document.getElementById('friction-text');
-        const statusBar = document.getElementById('status-bar');
-
-        pressure.oninput = function() {
-            let pVal = this.value;
-            document.getElementById('pressure-val').innerText = pVal;
-            // 模擬傾斜：壓力大於 800g 時，罐子會開始歪
-            if(pVal > 800) {
-                let tiltAngle = (pVal - 800) / 7;
-                bottle.style.transform = `rotate(${tiltAngle}deg)`;
-                frictionText.innerText = (0.25 + (pVal / 15000)).toFixed(2) + " μ";
-                // 警報狀態
-                statusBar.innerText = "";
-                statusBar.style.color = "#ef4444";
-            } else {
-                bottle.style.transform = "rotate(0deg)";
-                frictionText.innerText = "0.25 μ";
-                statusBar.innerText = " LIVE MONITORING ENABLED";
-                statusBar.style.color = "#22c55e";
-            }
-            // 模擬灑出：壓力大於 1200g 時，胡椒粉出現
-            if(pVal > 1200) { spillParticles.forEach(p => p.style.display = 'block'); }
-            else { spillParticles.forEach(p => p.style.display = 'none'); }
-        };
-    </script>
+    <p>重心高度: <span id="h-txt">150</span>mm</p>
+    <input type="range" min="100" max="400" value="150" id="h-in">
+    <p>內容重量: <span id="w-txt">3</span>kg</p>
+    <input type="range" min="1" max="10" value="3" id="w-in">
+    <div id="msg" class="status safe">✔ 結構重心穩定</div>
+  </div>
+  <script>
+    const hI = document.getElementById('h-in'), wI = document.getElementById('w-in'), b = document.getElementById('bottle'), m = document.getElementById('msg');
+    function v() {
+      let h = hI.value, w = wI.value;
+      document.getElementById('h-txt').innerText = h; document.getElementById('w-txt').innerText = w;
+      let r = h / w; b.style.transform = `rotate(${(r-50)*0.2}deg)`;
+      if(r > 100) { m.innerText = "⚠️ 警報：重心偏移"; m.className = "status danger"; }
+      else { m.innerText = "✔ 結構重心穩定"; m.className = "status safe"; }
+    }
+    hI.oninput = v; wI.oninput = v;
+  </script>
 </body>
 </html>
