@@ -1,42 +1,73 @@
-let angleSlider, pressureSlider, volumeSlider;
+let pressureSlider, volumeSlider, tiltSlider, diameterSlider, heightSlider;
+
 let jarAngle = 0;
-let stabilityText = "";
+let statusText = "";
 
 function setup() {
-  createCanvas(800, 500);
+  createCanvas(900, 600);
 
-  // 角度控制（傾斜）
-  angleSlider = createSlider(0, 90, 0);
-  angleSlider.position(20, 20);
+  // 1 外部壓力
+  pressureSlider = createSlider(0, 100, 30);
+  pressureSlider.position(20, 20);
 
-  // 壓力控制（外力）
-  pressureSlider = createSlider(0, 100, 50);
-  pressureSlider.position(20, 50);
-
-  // 容量控制（重心影響）
+  // 2 內部容量
   volumeSlider = createSlider(0, 100, 50);
-  volumeSlider.position(20, 80);
+  volumeSlider.position(20, 60);
+
+  // 3 傾斜角
+  tiltSlider = createSlider(0, 90, 0);
+  tiltSlider.position(20, 100);
+
+  // 4 直徑
+  diameterSlider = createSlider(30, 150, 80);
+  diameterSlider.position(20, 140);
+
+  // 5 高度
+  heightSlider = createSlider(50, 220, 120);
+  heightSlider.position(20, 180);
 }
 
 function draw() {
-  background(240);
+  background(245);
 
-  let angle = angleSlider.value();
+  // ===== 參數 =====
   let pressure = pressureSlider.value();
   let volume = volumeSlider.value();
+  let tilt = tiltSlider.value();
+  let diameter = diameterSlider.value();
+  let height = heightSlider.value();
 
-  // ===== 力學邏輯（簡化模型）=====
-  let instability = angle + pressure * 0.3 - volume * 0.2;
+  // ===== 力學模型（核心）=====
+  // 重心影響（高度越高越不穩）
+  let heightFactor = map(height, 50, 220, 0, 40);
 
-  if (instability > 60) {
-    jarAngle = lerp(jarAngle, radians(45), 0.05);
-    stabilityText = "⚠️ 不穩定：即將傾倒";
-  } else if (instability > 30) {
+  // 底盤穩定性（直徑越大越穩）
+  let baseStability = map(diameter, 30, 150, 40, 0);
+
+  // 內容重量（容量越多越重但可能更穩）
+  let volumeEffect = map(volume, 0, 100, -10, 20);
+
+  // 外力干擾
+  let pressureEffect = map(pressure, 0, 100, 0, 40);
+
+  // 綜合不穩定值
+  let instability =
+    tilt +
+    pressureEffect +
+    heightFactor -
+    baseStability +
+    volumeEffect;
+
+  // ===== 狀態判斷 =====
+  if (instability > 80) {
+    jarAngle = lerp(jarAngle, radians(50), 0.05);
+    statusText = "❌ 系統失衡：調味罐傾倒";
+  } else if (instability > 40) {
     jarAngle = lerp(jarAngle, radians(15), 0.05);
-    stabilityText = "⚠️ 輕微晃動";
+    statusText = "⚠️ 不穩定：晃動中";
   } else {
     jarAngle = lerp(jarAngle, 0, 0.05);
-    stabilityText = "✅ 穩定狀態";
+    statusText = "✅ 穩定：可正常使用";
   }
 
   // ===== 畫調味罐 =====
@@ -44,31 +75,36 @@ function draw() {
   translate(width / 2, height / 2);
   rotate(jarAngle);
 
-  fill(200, 180, 150);
-  rect(-40, -80, 80, 160, 10);
+  // 主體（依直徑與高度變化）
+  fill(220, 200, 170);
+  rect(-diameter / 2, -height / 2, diameter, height, 12);
 
-  fill(150, 100, 60);
-  rect(-30, -100, 60, 30, 5);
+  // 上蓋
+  fill(160, 120, 80);
+  rect(-diameter / 3, -height / 2 - 20, diameter * 0.66, 20, 5);
 
   pop();
 
-  // ===== UI文字 =====
+  // ===== UI =====
   fill(0);
   textSize(14);
-  text("傾斜角度: " + angle, 200, 30);
-  text("外部壓力: " + pressure, 200, 60);
-  text("內容容量: " + volume, 200, 90);
 
-  textSize(18);
-  text(stabilityText, 20, 150);
+  text("外部壓力: " + pressure, 220, 30);
+  text("內部容量: " + volume, 220, 70);
+  text("傾斜角度: " + tilt, 220, 110);
+  text("直徑尺寸: " + diameter, 220, 150);
+  text("高度尺寸: " + height, 220, 190);
 
-  // 成功 / 失敗提示
-  if (instability > 60) {
-    textSize(22);
+  // ===== 狀態顯示 =====
+  textSize(20);
+  text(statusText, 20, 260);
+
+  // 成功/失敗提示
+  if (instability > 80) {
     fill(200, 0, 0);
-    text("❌ 失敗：調味罐翻倒", 20, 200);
-  } else if (instability < 20) {
+    text("❌ FAILURE：產品設計不穩定", 20, 310);
+  } else if (instability < 25) {
     fill(0, 150, 0);
-    text("🏆 成功：穩定操作完成", 20, 200);
+    text("🏆 SUCCESS：最佳使用狀態", 20, 310);
   }
 }
