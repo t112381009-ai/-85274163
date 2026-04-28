@@ -1,206 +1,131 @@
-import { useState, useCallback, useRef, useEffect } from "react";
-import { JarSimulator } from "./components/JarSimulator";
-import { Settings, Info, Activity, Box } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
-import { SimState } from "./types";
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>調味罐力學受力與穩定性分析系統</title>
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #0f172a; color: #e2e8f0; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .app-container { background: #1e293b; padding: 30px; border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); width: 450px; border: 1px solid #334155; }
+        .title { font-size: 18px; font-weight: bold; margin-bottom: 5px; color: #f8fafc; }
+        .subtitle { font-size: 12px; color: #94a3b8; margin-bottom: 25px; }
+        
+        /* 視覺模擬區 */
+        .preview-box { background: radial-gradient(circle, #334155 0%, #0f172a 100%); height: 220px; border-radius: 16px; position: relative; overflow: hidden; margin-bottom: 25px; display: flex; align-items: flex-end; justify-content: center; border: 1px solid #475569; }
+        .bottle { width: 80px; transform-origin: bottom center; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; z-index: 2; }
+        .cap { background: #d2b48c; height: 30px; border-radius: 12px 12px 2px 2px; border-bottom: 3px solid #b39b7d; }
+        .glass-body { background: rgba(255, 255, 255, 0.1); height: 120px; border: 2px solid rgba(255, 255, 255, 0.2); border-radius: 2px 2px 15px 15px; backdrop-filter: blur(8px); }
+        .liquid { position: absolute; bottom: 5px; left: 5px; right: 5px; background: rgba(210, 180, 140, 0.3); border-radius: 0 0 10px 10px; transition: height 0.3s; }
+        
+        /* 5 個機關控制區 */
+        .controls { display: grid; grid-template-columns: 1fr; gap: 12px; text-align: left; }
+        .control-group { background: #334155; padding: 10px 15px; border-radius: 12px; }
+        label { font-size: 11px; color: #cbd5e1; display: block; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+        input[type=range] { width: 100%; cursor: pointer; accent-color: #d2b48c; }
+        .val-display { float: right; color: #fbbf24; font-family: monospace; }
+        
+        /* 物理數據回傳 */
+        .data-panel { margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .data-card { background: #0f172a; padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #1e293b; }
+        .data-label { font-size: 10px; color: #64748b; }
+        .data-num { font-size: 16px; font-weight: bold; color: #38bdf8; }
+        .status-bar { grid-column: span 2; padding: 8px; border-radius: 8px; font-weight: bold; margin-top: 5px; font-size: 13px; }
+        .safe { background: #064e3b; color: #6ee7b7; }
+        .danger { background: #7f1d1d; color: #fca5a5; }
+    </style>
+</head>
+<body>
 
-export default function App() {
-  const [state, setState] = useState<SimState>({
-    angle: 0,
-    isPouring: false,
-    mass: 0.85,
-    friction: 0.25,
-  });
+<div class="app-container">
+    <div class="title">SpiceJar Analytics v2.0</div>
+    <div class="subtitle">Industrial Design Mechanics Simulation</div>
 
-  return (
-    <div className="relative h-screen w-full flex flex-col overflow-hidden bg-[#0A0C10] text-[#E0E2E6]">
-      {/* Top Navigation */}
-      <nav className="h-16 border-b border-white/10 flex items-center justify-between px-8 panel-bg z-30">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded bg-orange-600 flex items-center justify-center font-bold text-black tracking-tighter">S</div>
-          <span className="text-lg font-light tracking-[0.2em] uppercase">SpiceCore <span className="font-bold">Pro</span></span>
-        </div>
-        <div className="hidden md:flex gap-8 text-[11px] uppercase tracking-[0.25em] text-gray-400 font-medium">
-          <a href="#" className="text-orange-500">Schematics</a>
-          <a href="#" className="hover:text-white transition-colors">Calibrations</a>
-          <a href="#" className="hover:text-white transition-colors">Inventory</a>
-          <a href="#" className="hover:text-white transition-colors">Logs</a>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex flex-col items-end">
-            <span className="text-[10px] text-gray-500 uppercase tracking-widest">Device Status</span>
-            <span className="text-xs text-green-500 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-              Synced
-            </span>
-          </div>
-        </div>
-      </nav>
-
-      {/* Main Workspace */}
-      <main className="flex-1 flex overflow-hidden relative">
-        {/* Left Sidebar: Mechanical Properties */}
-        <aside className="w-72 border-r border-white/5 p-6 flex flex-col gap-8 panel-bg z-20">
-          <div>
-            <h3 className="text-[10px] uppercase tracking-[0.2em] text-orange-500 mb-5 font-bold">Structure Integrity</h3>
-            <div className="space-y-4">
-              <div className="p-3 bg-white/[0.03] rounded border border-white/5">
-                <div className="flex justify-between text-[10px] uppercase text-gray-400 mb-1 tracking-wider">
-                  <span>Body Material</span>
-                  <span>Boro-Glass</span>
-                </div>
-                <div className="text-lg font-serif italic text-white/90">High-Density Shell</div>
-              </div>
-              <div className="p-3 bg-white/[0.03] rounded border border-white/5">
-                <div className="flex justify-between text-[10px] uppercase text-gray-400 mb-1 tracking-wider">
-                  <span>Internal Mass</span>
-                  <span>Current</span>
-                </div>
-                <div className="text-lg font-mono text-white">{(state.mass * 250).toFixed(2)} <span className="text-sm text-gray-500 font-sans">g</span></div>
-                <div className="w-full h-1 bg-white/5 mt-3 rounded-full overflow-hidden">
-                  <motion.div 
-                    animate={{ width: `${Math.max(2, state.mass * 100)}%` }}
-                    className="h-full bg-orange-600 shadow-[0_0_10px_rgba(234,88,12,0.4)]" 
-                  />
-                </div>
-              </div>
+    <div class="preview-box">
+        <div class="bottle" id="bottle">
+            <div class="cap"></div>
+            <div class="glass-body">
+                <div class="liquid" id="liquid-level"></div>
             </div>
-          </div>
-
-          <div>
-            <h3 className="text-[10px] uppercase tracking-[0.2em] text-orange-500 mb-5 font-bold">Vector Analysis</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white/[0.03] p-3 rounded border border-white/5">
-                <div className="text-[9px] text-gray-500 uppercase tracking-widest mb-1">Torque</div>
-                <div className="text-sm font-mono text-white">{(Math.abs(state.angle) * 0.04).toFixed(2)} Nm</div>
-              </div>
-              <div className="bg-white/[0.03] p-3 rounded border border-white/5">
-                <div className="text-[9px] text-gray-500 uppercase tracking-widest mb-1">Friction</div>
-                <div className="text-sm font-mono text-white">{state.friction.toFixed(2)} μ</div>
-              </div>
-              <div className="bg-white/[0.03] p-3 rounded border border-white/5">
-                <div className="text-[9px] text-gray-500 uppercase tracking-widest mb-1">Pitch</div>
-                <div className="text-sm font-mono text-white">{state.angle.toFixed(1)}°</div>
-              </div>
-              <div className="bg-white/[0.03] p-3 rounded border border-white/5">
-                <div className="text-[9px] text-gray-500 uppercase tracking-widest mb-1">Flow Rate</div>
-                <div className="text-sm font-mono text-white">{state.isPouring ? "4.2" : "0.0"} g/s</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-auto">
-            <button 
-              onClick={() => setState(prev => ({ ...prev, mass: 0.85 }))}
-              className="w-full py-3 text-[10px] uppercase tracking-[0.2em] border border-orange-500/30 bg-orange-500/5 text-orange-500 hover:bg-orange-500 hover:text-white transition-all rounded"
-            >
-              Refill Substrate
-            </button>
-          </div>
-        </aside>
-
-        {/* Center: Schematics (Simulator) */}
-        <section className="flex-1 relative bg-[radial-gradient(circle_at_50%_50%,_#1a1d24_0%,_#0a0c10_100%)] overflow-hidden">
-          <div className="absolute inset-0 grid-bg opacity-20 pointer-events-none" />
-          
-          <div className="absolute top-12 left-12 z-10">
-            <div className="text-[10px] text-orange-400/70 font-mono tracking-widest">SECTION A-A / GRINDER ASSEMBLY</div>
-            <div className="w-32 h-[1px] bg-orange-400/20 mt-2"></div>
-          </div>
-
-          <div className="w-full h-full relative z-0">
-            <JarSimulator state={state} onStateChange={setState} />
-          </div>
-
-          <div className="absolute bottom-8 right-8 text-right z-10 pointer-events-none">
-            <div className="text-[11px] font-mono text-orange-500/60 uppercase tracking-widest">MODEL REF: SC-900X-V2</div>
-            <div className="text-[9px] text-gray-500 uppercase tracking-tighter opacity-40">Mechanical Distribution System Patent Pending</div>
-          </div>
-        </section>
-
-        {/* Right Sidebar: Controls & Presets */}
-        <aside className="w-80 border-l border-white/5 panel-bg p-8 flex flex-col gap-10 z-20">
-          <div>
-            <h2 className="text-2xl font-serif italic mb-3 text-white tracking-tight">Dispense Logic</h2>
-            <p className="text-xs text-gray-400 leading-relaxed opacity-70">Adjust mechanical precision parameters for optimal spice extraction and flow consistency.</p>
-          </div>
-
-          <div className="space-y-8 flex-1">
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <label className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Friction Calibration</label>
-                <span className="text-xs font-mono text-orange-500">{state.friction.toFixed(2)} μ</span>
-              </div>
-              <input 
-                type="range" 
-                min="0.1" 
-                max="0.9" 
-                step="0.05"
-                value={state.friction}
-                onChange={(e) => setState({ ...state, friction: parseFloat(e.target.value) })}
-                className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-orange-500"
-              />
-            </div>
-
-            <div className="pt-8 border-t border-white/5">
-              <h3 className="text-[10px] uppercase tracking-[0.2em] text-gray-500 mb-5 font-bold">Active Substrate</h3>
-              <div className="space-y-3">
-                <PresetButton 
-                  label="Black Pepper" 
-                  status="ACTIVE" 
-                  isActive={true} 
-                />
-                <PresetButton 
-                  label="Himalayan Salt" 
-                  status="STBY" 
-                  isActive={false} 
-                />
-                <PresetButton 
-                  label="Red Chili" 
-                  status="STBY" 
-                  isActive={false} 
-                />
-              </div>
-            </div>
-          </div>
-        </aside>
-      </main>
-
-      {/* Bottom Status Bar */}
-      <footer className="h-12 border-t border-white/10 panel-bg px-8 flex items-center justify-between text-[10px] font-mono text-gray-500 z-30">
-        <div className="flex gap-8">
-          <span className="flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-orange-500/50" /> TEMP: 22.4°C</span>
-          <span className="flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-orange-500/50" /> LOAD: {((state.mass / 0.85) * 100).toFixed(1)}%</span>
-          <span className="flex items-center gap-2 tracking-widest"><div className="w-1 h-1 rounded-full bg-orange-500/50" /> SYS_STABLE_001</span>
         </div>
-        <div className="flex items-center gap-2 uppercase tracking-widest">
-          <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
-          Live Structural Monitoring Enabled
-        </div>
-      </footer>
     </div>
-  );
-}
 
-function PresetButton({ label, status, isActive }: { label: string; status: string; isActive: boolean }) {
-  return (
-    <button className={`w-full p-4 border rounded flex justify-between items-center transition-all ${
-      isActive 
-        ? 'border-orange-500/50 bg-orange-500/10 text-white shadow-[inset_0_0_20px_rgba(234,88,12,0.05)]' 
-        : 'border-white/5 hover:bg-white/5 text-gray-500'
-    }`}>
-      <span className="text-sm uppercase tracking-[0.15em] font-medium">{label}</span>
-      <span className={`text-[10px] font-mono ${isActive ? 'text-orange-400 font-bold' : 'text-gray-600'}`}>{status}</span>
-    </button>
-  );
-}
-
-function PropertyRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between items-center border-b border-black/[0.03] pb-2">
-      <span className="text-[11px] text-black/50">{label}</span>
-      <span className="text-[11px] tech-value uppercase">{value}</span>
+    <div class="controls">
+        <div class="control-group">
+            <label>1. 瓶蓋重心高度 (Cap Height) <span class="val-display" id="v1">30</span></label>
+            <input type="range" id="capH" min="20" max="80" value="30">
+        </div>
+        <div class="control-group">
+            <label>2. 內容物填裝量 (Fill Volume) <span class="val-display" id="v2">50</span>%</label>
+            <input type="range" id="fill" min="0" max="100" value="50">
+        </div>
+        <div class="control-group">
+            <label>3. 外部擠壓力 (Pressure Force) <span class="val-display" id="v3">0</span>N</label>
+            <input type="range" id="force" min="0" max="50" value="0">
+        </div>
+        <div class="control-group">
+            <label>4. 底座寬度係數 (Base Width) <span class="val-display" id="v4">1.0</span>x</label>
+            <input type="range" id="width" min="0.5" max="2.0" step="0.1" value="1.0">
+        </div>
+        <div class="control-group">
+            <label>5. 使用傾斜角度 (Tilt Angle) <span class="val-display" id="v5">0</span>°</label>
+            <input type="range" id="tilt" min="-45" max="45" value="0">
+        </div>
     </div>
-  );
-}
 
+    <div class="data-panel">
+        <div class="data-card"><div class="data-label">傾斜矩 (Tilt Moment)</div><div class="data-num" id="d1">0.00</div></div>
+        <div class="data-card"><div class="data-label">壓迫應力 (Stress)</div><div class="data-num" id="d2">0.00</div></div>
+        <div id="status" class="status-bar safe">系統狀態：結構穩定</div>
+    </div>
+</div>
+
+<script>
+    const inputs = ['capH', 'fill', 'force', 'width', 'tilt'];
+    const bottle = document.getElementById('bottle');
+    const cap = document.querySelector('.cap');
+    const liquid = document.getElementById('liquid-level');
+    const status = document.getElementById('status');
+
+    function calculate() {
+        // 獲取數值
+        const cH = parseInt(document.getElementById('capH').value);
+        const fi = parseInt(document.getElementById('fill').value);
+        const fo = parseInt(document.getElementById('force').value);
+        const wi = parseFloat(document.getElementById('width').value);
+        const ti = parseInt(document.getElementById('tilt').value);
+
+        // 更新視覺顯示
+        inputs.forEach((id, index) => document.getElementById('v' + (index+1)).innerText = document.getElementById(id).value);
+        cap.style.height = cH + 'px';
+        liquid.style.height = fi + '%';
+        bottle.style.width = (wi * 80) + 'px';
+        
+        // 力學運算邏輯
+        // 1. 傾斜矩 = (重心高度 * 傾斜角度正弦) / 支撐寬度
+        let centerOfGravity = (cH + (100 - fi)) / 2;
+        let tiltMoment = (centerOfGravity * Math.sin(ti * Math.PI / 180) / wi).toFixed(2);
+        
+        // 2. 應力 = 外部壓力 / 接觸面積
+        let stress = (fo / (wi * 2)).toFixed(2);
+        
+        document.getElementById('d1').innerText = tiltMoment + " Nm";
+        document.getElementById('d2').innerText = stress + " kPa";
+
+        // 判定邏輯 (工業設計安全係數)
+        let totalRisk = Math.abs(parseFloat(tiltMoment)) + (stress * 0.5);
+        bottle.style.transform = `rotate(${ti}deg) translateY(${-fo/5}px)`;
+
+        if (totalRisk > 15 || Math.abs(ti) > 35) {
+            status.innerText = "🚨 警告：力學結構失效 (Overturn Risk)";
+            status.className = "status-bar danger";
+        } else {
+            status.innerText = "✔ 系統狀態：結構穩定 (Stable)";
+            status.className = "status-bar safe";
+        }
+    }
+
+    inputs.forEach(id => document.getElementById(id).addEventListener('input', calculate));
+    calculate();
+</script>
+
+</body>
+</html>
