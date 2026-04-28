@@ -2,130 +2,79 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>調味罐力學受力與穩定性分析系統</title>
+    <title>SPICECORE PRO | 結構穩定性與物理模擬介面</title>
     <style>
-        body { font-family: 'Inter', sans-serif; background: #0f172a; color: #e2e8f0; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .app-container { background: #1e293b; padding: 30px; border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); width: 450px; border: 1px solid #334155; }
-        .title { font-size: 18px; font-weight: bold; margin-bottom: 5px; color: #f8fafc; }
-        .subtitle { font-size: 12px; color: #94a3b8; margin-bottom: 25px; }
-        
-        /* 視覺模擬區 */
-        .preview-box { background: radial-gradient(circle, #334155 0%, #0f172a 100%); height: 220px; border-radius: 16px; position: relative; overflow: hidden; margin-bottom: 25px; display: flex; align-items: flex-end; justify-content: center; border: 1px solid #475569; }
-        .bottle { width: 80px; transform-origin: bottom center; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; z-index: 2; }
-        .cap { background: #d2b48c; height: 30px; border-radius: 12px 12px 2px 2px; border-bottom: 3px solid #b39b7d; }
-        .glass-body { background: rgba(255, 255, 255, 0.1); height: 120px; border: 2px solid rgba(255, 255, 255, 0.2); border-radius: 2px 2px 15px 15px; backdrop-filter: blur(8px); }
-        .liquid { position: absolute; bottom: 5px; left: 5px; right: 5px; background: rgba(210, 180, 140, 0.3); border-radius: 0 0 10px 10px; transition: height 0.3s; }
-        
-        /* 5 個機關控制區 */
-        .controls { display: grid; grid-template-columns: 1fr; gap: 12px; text-align: left; }
-        .control-group { background: #334155; padding: 10px 15px; border-radius: 12px; }
-        label { font-size: 11px; color: #cbd5e1; display: block; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
-        input[type=range] { width: 100%; cursor: pointer; accent-color: #d2b48c; }
-        .val-display { float: right; color: #fbbf24; font-family: monospace; }
-        
-        /* 物理數據回傳 */
-        .data-panel { margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .data-card { background: #0f172a; padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #1e293b; }
-        .data-label { font-size: 10px; color: #64748b; }
-        .data-num { font-size: 16px; font-weight: bold; color: #38bdf8; }
-        .status-bar { grid-column: span 2; padding: 8px; border-radius: 8px; font-weight: bold; margin-top: 5px; font-size: 13px; }
-        .safe { background: #064e3b; color: #6ee7b7; }
-        .danger { background: #7f1d1d; color: #fca5a5; }
+        :root { --main-bg: #111418; --panel-bg: #1e2229; --active-orange: #f97316; --danger-red: #ef4444; --safe-green: #22c55e; --text-primary: #f8fafc; --text-secondary: #94a3b8; }
+        * { box-shadow: 0 0 1px #334155 inset; box-sizing: border-box; margin: 0; padding: 0; cursor: crosshair; }
+        body { font-family: 'JetBrains Mono', 'Segoe UI', sans-serif; background: var(--main-bg); color: var(--text-primary); padding: 20px; font-size: 13px; }
+        .header { display: flex; justify-content: space-between; border-bottom: 2px solid #334155; padding-bottom: 10px; margin-bottom: 15px; }
+        .logo { font-weight: bold; font-size: 16px; letter-spacing: 1px; color: var(--text-primary); }
+        .logo span { color: #f97316; font-size: 18px; }
+        .grid-container { display: grid; grid-template-columns: 250px 1fr 280px; gap: 15px; }
+        .panel { background: var(--panel-bg); border-radius: 6px; padding: 15px; border: 1px solid #334155; }
+        .panel-title { color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; font-size: 11px; }
+        .central-view { position: relative; border: 1px solid #334155; background-image: radial-gradient(#2a303b 1px, transparent 1px); background-size: 15px 15px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .bottle { width: 70px; transform-origin: bottom center; transition: transform 0.2s cubic-bezier(0.1, 0.7, 0.3, 1.0); }
+        .cap { background: #d2b48c; height: 35px; border-radius: 8px 8px 2px 2px; } /* 米色霧面頂蓋 */
+        .body { background: rgba(255,255,255,0.1); height: 120px; border: 1px solid rgba(255,255,255,0.4); border-radius: 2px 2px 10px 10px; backdrop-filter: blur(5px); } /* 透明罐身 */
+        input[type=range] { width: 100%; -webkit-appearance: none; background: #334155; height: 3px; accent-color: #f97316; }
+        .data-point { margin-bottom: 10px; }
+        .data-label { color: var(--text-secondary); }
+        .data-value { font-size: 18px; font-weight: bold; color: #f97316; }
+        .spilling-pepper { position: absolute; width: 3px; height: 3px; background: #222; border-radius: 50%; display: none; }
+        #status-bar { color: var(--safe-green); text-transform: uppercase; letter-spacing: 1px; }
+        #friction-text { color: #f97316; }
     </style>
 </head>
 <body>
-
-<div class="app-container">
-    <div class="title">SpiceJar Analytics v2.0</div>
-    <div class="subtitle">Industrial Design Mechanics Simulation</div>
-
-    <div class="preview-box">
-        <div class="bottle" id="bottle">
-            <div class="cap"></div>
-            <div class="glass-body">
-                <div class="liquid" id="liquid-level"></div>
-            </div>
+    <div class="header"><div class="logo"><span>S</span> SPICECORE PRO</div><div>DEVICE STATUS: <span id="sync-status">Synced</span></div></div>
+    <div class="grid-container">
+        <div class="panel"><div class="panel-title">STRUCTURE INTEGRITY</div>
+            <div class="data-point"><div class="data-label">INTERNAL MASS (g)</div><div class="data-value">212.50</div></div>
+            <div class="data-point"><div class="data-label">BODY MATERIAL</div>Boro-Glass</div>
+        </div>
+        <div class="central-view panel" id="main-sim">
+            <div class="spilling-pepper" style="top: 30px; left: 45%; animation: spill 1s infinite;"></div>
+            <div class="spilling-pepper" style="top: 35px; left: 52%; animation: spill 1s infinite 0.3s;"></div>
+            <div class="spilling-pepper" style="top: 40px; left: 48%; animation: spill 1s infinite 0.6s;"></div>
+            <div class="bottle" id="bottle"><div class="cap"></div><div class="body"></div></div>
+        </div>
+        <div class="panel"><div class="panel-title">PHYSICS CALIBRATION</div>
+            <p class="data-label">DISPENSE LOGIC / PRESSURE APPLIED (g)</p>
+            <input type="range" min="0" max="1500" value="0" id="pressure">
+            <div class="data-label" style="text-align: right;"><span id="pressure-val">0</span> g</div>
+            <div class="data-label" style="margin-top: 15px;">Friction Calibration: <span id="friction-text">0.25 μ</span></div>
         </div>
     </div>
+    <div id="status-bar" style="text-align: center; margin-top: 20px;"> LIVE MONITORING ENABLED</div>
+    <script>
+        const pressure = document.getElementById('pressure');
+        const bottle = document.getElementById('bottle');
+        const spillParticles = document.querySelectorAll('.spilling-pepper');
+        const frictionText = document.getElementById('friction-text');
+        const statusBar = document.getElementById('status-bar');
 
-    <div class="controls">
-        <div class="control-group">
-            <label>1. 瓶蓋重心高度 (Cap Height) <span class="val-display" id="v1">30</span></label>
-            <input type="range" id="capH" min="20" max="80" value="30">
-        </div>
-        <div class="control-group">
-            <label>2. 內容物填裝量 (Fill Volume) <span class="val-display" id="v2">50</span>%</label>
-            <input type="range" id="fill" min="0" max="100" value="50">
-        </div>
-        <div class="control-group">
-            <label>3. 外部擠壓力 (Pressure Force) <span class="val-display" id="v3">0</span>N</label>
-            <input type="range" id="force" min="0" max="50" value="0">
-        </div>
-        <div class="control-group">
-            <label>4. 底座寬度係數 (Base Width) <span class="val-display" id="v4">1.0</span>x</label>
-            <input type="range" id="width" min="0.5" max="2.0" step="0.1" value="1.0">
-        </div>
-        <div class="control-group">
-            <label>5. 使用傾斜角度 (Tilt Angle) <span class="val-display" id="v5">0</span>°</label>
-            <input type="range" id="tilt" min="-45" max="45" value="0">
-        </div>
-    </div>
-
-    <div class="data-panel">
-        <div class="data-card"><div class="data-label">傾斜矩 (Tilt Moment)</div><div class="data-num" id="d1">0.00</div></div>
-        <div class="data-card"><div class="data-label">壓迫應力 (Stress)</div><div class="data-num" id="d2">0.00</div></div>
-        <div id="status" class="status-bar safe">系統狀態：結構穩定</div>
-    </div>
-</div>
-
-<script>
-    const inputs = ['capH', 'fill', 'force', 'width', 'tilt'];
-    const bottle = document.getElementById('bottle');
-    const cap = document.querySelector('.cap');
-    const liquid = document.getElementById('liquid-level');
-    const status = document.getElementById('status');
-
-    function calculate() {
-        // 獲取數值
-        const cH = parseInt(document.getElementById('capH').value);
-        const fi = parseInt(document.getElementById('fill').value);
-        const fo = parseInt(document.getElementById('force').value);
-        const wi = parseFloat(document.getElementById('width').value);
-        const ti = parseInt(document.getElementById('tilt').value);
-
-        // 更新視覺顯示
-        inputs.forEach((id, index) => document.getElementById('v' + (index+1)).innerText = document.getElementById(id).value);
-        cap.style.height = cH + 'px';
-        liquid.style.height = fi + '%';
-        bottle.style.width = (wi * 80) + 'px';
-        
-        // 力學運算邏輯
-        // 1. 傾斜矩 = (重心高度 * 傾斜角度正弦) / 支撐寬度
-        let centerOfGravity = (cH + (100 - fi)) / 2;
-        let tiltMoment = (centerOfGravity * Math.sin(ti * Math.PI / 180) / wi).toFixed(2);
-        
-        // 2. 應力 = 外部壓力 / 接觸面積
-        let stress = (fo / (wi * 2)).toFixed(2);
-        
-        document.getElementById('d1').innerText = tiltMoment + " Nm";
-        document.getElementById('d2').innerText = stress + " kPa";
-
-        // 判定邏輯 (工業設計安全係數)
-        let totalRisk = Math.abs(parseFloat(tiltMoment)) + (stress * 0.5);
-        bottle.style.transform = `rotate(${ti}deg) translateY(${-fo/5}px)`;
-
-        if (totalRisk > 15 || Math.abs(ti) > 35) {
-            status.innerText = "🚨 警告：力學結構失效 (Overturn Risk)";
-            status.className = "status-bar danger";
-        } else {
-            status.innerText = "✔ 系統狀態：結構穩定 (Stable)";
-            status.className = "status-bar safe";
-        }
-    }
-
-    inputs.forEach(id => document.getElementById(id).addEventListener('input', calculate));
-    calculate();
-</script>
-
+        pressure.oninput = function() {
+            let pVal = this.value;
+            document.getElementById('pressure-val').innerText = pVal;
+            // 模擬傾斜：壓力大於 800g 時，罐子會開始歪
+            if(pVal > 800) {
+                let tiltAngle = (pVal - 800) / 7;
+                bottle.style.transform = `rotate(${tiltAngle}deg)`;
+                frictionText.innerText = (0.25 + (pVal / 15000)).toFixed(2) + " μ";
+                // 警報狀態
+                statusBar.innerText = "";
+                statusBar.style.color = "#ef4444";
+            } else {
+                bottle.style.transform = "rotate(0deg)";
+                frictionText.innerText = "0.25 μ";
+                statusBar.innerText = " LIVE MONITORING ENABLED";
+                statusBar.style.color = "#22c55e";
+            }
+            // 模擬灑出：壓力大於 1200g 時，胡椒粉出現
+            if(pVal > 1200) { spillParticles.forEach(p => p.style.display = 'block'); }
+            else { spillParticles.forEach(p => p.style.display = 'none'); }
+        };
+    </script>
 </body>
 </html>
