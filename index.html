@@ -1,43 +1,206 @@
-<!DOCTYPE html>
-<html lang="zh">
-<head>
-  <meta charset="UTF-8">
-  <title>調味罐力學模擬 APP</title>
-  <style>
-    body { font-family: sans-serif; background: #0f172a; color: white; text-align: center; padding: 20px; }
-    .card { background: #1e293b; padding: 25px; border-radius: 20px; width: 300px; margin: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-    .bottle-box { height: 200px; display: flex; align-items: flex-end; justify-content: center; margin-bottom: 20px; }
-    .bottle { width: 70px; transform-origin: bottom center; transition: transform 0.2s; }
-    .cap { background: #d2b48c; height: 35px; border-radius: 8px 8px 2px 2px; } /* 米色蓋子 */
-    .body { background: rgba(255,255,255,0.15); height: 110px; border: 2px solid rgba(255,255,255,0.4); border-radius: 2px 2px 10px 10px; backdrop-filter: blur(5px); } /* 透明罐身 */
-    input { width: 100%; margin: 15px 0; accent-color: #d2b48c; }
-    .status { padding: 12px; border-radius: 8px; margin-top: 15px; font-weight: bold; }
-    .safe { background: #064e3b; color: #6ee7b7; }
-    .danger { background: #7f1d1d; color: #fca5a5; }
-  </style>
-</head>
-<body>
-  <h1>🍶 產品力學穩定度模擬</h1>
-  <div class="card">
-    <div class="bottle-box">
-      <div class="bottle" id="bottle"><div class="cap"></div><div class="body"></div></div>
+import { useState, useCallback, useRef, useEffect } from "react";
+import { JarSimulator } from "./components/JarSimulator";
+import { Settings, Info, Activity, Box } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { SimState } from "./types";
+
+export default function App() {
+  const [state, setState] = useState<SimState>({
+    angle: 0,
+    isPouring: false,
+    mass: 0.85,
+    friction: 0.25,
+  });
+
+  return (
+    <div className="relative h-screen w-full flex flex-col overflow-hidden bg-[#0A0C10] text-[#E0E2E6]">
+      {/* Top Navigation */}
+      <nav className="h-16 border-b border-white/10 flex items-center justify-between px-8 panel-bg z-30">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded bg-orange-600 flex items-center justify-center font-bold text-black tracking-tighter">S</div>
+          <span className="text-lg font-light tracking-[0.2em] uppercase">SpiceCore <span className="font-bold">Pro</span></span>
+        </div>
+        <div className="hidden md:flex gap-8 text-[11px] uppercase tracking-[0.25em] text-gray-400 font-medium">
+          <a href="#" className="text-orange-500">Schematics</a>
+          <a href="#" className="hover:text-white transition-colors">Calibrations</a>
+          <a href="#" className="hover:text-white transition-colors">Inventory</a>
+          <a href="#" className="hover:text-white transition-colors">Logs</a>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] text-gray-500 uppercase tracking-widest">Device Status</span>
+            <span className="text-xs text-green-500 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              Synced
+            </span>
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Workspace */}
+      <main className="flex-1 flex overflow-hidden relative">
+        {/* Left Sidebar: Mechanical Properties */}
+        <aside className="w-72 border-r border-white/5 p-6 flex flex-col gap-8 panel-bg z-20">
+          <div>
+            <h3 className="text-[10px] uppercase tracking-[0.2em] text-orange-500 mb-5 font-bold">Structure Integrity</h3>
+            <div className="space-y-4">
+              <div className="p-3 bg-white/[0.03] rounded border border-white/5">
+                <div className="flex justify-between text-[10px] uppercase text-gray-400 mb-1 tracking-wider">
+                  <span>Body Material</span>
+                  <span>Boro-Glass</span>
+                </div>
+                <div className="text-lg font-serif italic text-white/90">High-Density Shell</div>
+              </div>
+              <div className="p-3 bg-white/[0.03] rounded border border-white/5">
+                <div className="flex justify-between text-[10px] uppercase text-gray-400 mb-1 tracking-wider">
+                  <span>Internal Mass</span>
+                  <span>Current</span>
+                </div>
+                <div className="text-lg font-mono text-white">{(state.mass * 250).toFixed(2)} <span className="text-sm text-gray-500 font-sans">g</span></div>
+                <div className="w-full h-1 bg-white/5 mt-3 rounded-full overflow-hidden">
+                  <motion.div 
+                    animate={{ width: `${Math.max(2, state.mass * 100)}%` }}
+                    className="h-full bg-orange-600 shadow-[0_0_10px_rgba(234,88,12,0.4)]" 
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-[10px] uppercase tracking-[0.2em] text-orange-500 mb-5 font-bold">Vector Analysis</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-white/[0.03] p-3 rounded border border-white/5">
+                <div className="text-[9px] text-gray-500 uppercase tracking-widest mb-1">Torque</div>
+                <div className="text-sm font-mono text-white">{(Math.abs(state.angle) * 0.04).toFixed(2)} Nm</div>
+              </div>
+              <div className="bg-white/[0.03] p-3 rounded border border-white/5">
+                <div className="text-[9px] text-gray-500 uppercase tracking-widest mb-1">Friction</div>
+                <div className="text-sm font-mono text-white">{state.friction.toFixed(2)} μ</div>
+              </div>
+              <div className="bg-white/[0.03] p-3 rounded border border-white/5">
+                <div className="text-[9px] text-gray-500 uppercase tracking-widest mb-1">Pitch</div>
+                <div className="text-sm font-mono text-white">{state.angle.toFixed(1)}°</div>
+              </div>
+              <div className="bg-white/[0.03] p-3 rounded border border-white/5">
+                <div className="text-[9px] text-gray-500 uppercase tracking-widest mb-1">Flow Rate</div>
+                <div className="text-sm font-mono text-white">{state.isPouring ? "4.2" : "0.0"} g/s</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-auto">
+            <button 
+              onClick={() => setState(prev => ({ ...prev, mass: 0.85 }))}
+              className="w-full py-3 text-[10px] uppercase tracking-[0.2em] border border-orange-500/30 bg-orange-500/5 text-orange-500 hover:bg-orange-500 hover:text-white transition-all rounded"
+            >
+              Refill Substrate
+            </button>
+          </div>
+        </aside>
+
+        {/* Center: Schematics (Simulator) */}
+        <section className="flex-1 relative bg-[radial-gradient(circle_at_50%_50%,_#1a1d24_0%,_#0a0c10_100%)] overflow-hidden">
+          <div className="absolute inset-0 grid-bg opacity-20 pointer-events-none" />
+          
+          <div className="absolute top-12 left-12 z-10">
+            <div className="text-[10px] text-orange-400/70 font-mono tracking-widest">SECTION A-A / GRINDER ASSEMBLY</div>
+            <div className="w-32 h-[1px] bg-orange-400/20 mt-2"></div>
+          </div>
+
+          <div className="w-full h-full relative z-0">
+            <JarSimulator state={state} onStateChange={setState} />
+          </div>
+
+          <div className="absolute bottom-8 right-8 text-right z-10 pointer-events-none">
+            <div className="text-[11px] font-mono text-orange-500/60 uppercase tracking-widest">MODEL REF: SC-900X-V2</div>
+            <div className="text-[9px] text-gray-500 uppercase tracking-tighter opacity-40">Mechanical Distribution System Patent Pending</div>
+          </div>
+        </section>
+
+        {/* Right Sidebar: Controls & Presets */}
+        <aside className="w-80 border-l border-white/5 panel-bg p-8 flex flex-col gap-10 z-20">
+          <div>
+            <h2 className="text-2xl font-serif italic mb-3 text-white tracking-tight">Dispense Logic</h2>
+            <p className="text-xs text-gray-400 leading-relaxed opacity-70">Adjust mechanical precision parameters for optimal spice extraction and flow consistency.</p>
+          </div>
+
+          <div className="space-y-8 flex-1">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <label className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Friction Calibration</label>
+                <span className="text-xs font-mono text-orange-500">{state.friction.toFixed(2)} μ</span>
+              </div>
+              <input 
+                type="range" 
+                min="0.1" 
+                max="0.9" 
+                step="0.05"
+                value={state.friction}
+                onChange={(e) => setState({ ...state, friction: parseFloat(e.target.value) })}
+                className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-orange-500"
+              />
+            </div>
+
+            <div className="pt-8 border-t border-white/5">
+              <h3 className="text-[10px] uppercase tracking-[0.2em] text-gray-500 mb-5 font-bold">Active Substrate</h3>
+              <div className="space-y-3">
+                <PresetButton 
+                  label="Black Pepper" 
+                  status="ACTIVE" 
+                  isActive={true} 
+                />
+                <PresetButton 
+                  label="Himalayan Salt" 
+                  status="STBY" 
+                  isActive={false} 
+                />
+                <PresetButton 
+                  label="Red Chili" 
+                  status="STBY" 
+                  isActive={false} 
+                />
+              </div>
+            </div>
+          </div>
+        </aside>
+      </main>
+
+      {/* Bottom Status Bar */}
+      <footer className="h-12 border-t border-white/10 panel-bg px-8 flex items-center justify-between text-[10px] font-mono text-gray-500 z-30">
+        <div className="flex gap-8">
+          <span className="flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-orange-500/50" /> TEMP: 22.4°C</span>
+          <span className="flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-orange-500/50" /> LOAD: {((state.mass / 0.85) * 100).toFixed(1)}%</span>
+          <span className="flex items-center gap-2 tracking-widest"><div className="w-1 h-1 rounded-full bg-orange-500/50" /> SYS_STABLE_001</span>
+        </div>
+        <div className="flex items-center gap-2 uppercase tracking-widest">
+          <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
+          Live Structural Monitoring Enabled
+        </div>
+      </footer>
     </div>
-    <p>重心高度: <span id="h-txt">150</span>mm</p>
-    <input type="range" min="100" max="400" value="150" id="h-in">
-    <p>內容重量: <span id="w-txt">3</span>kg</p>
-    <input type="range" min="1" max="10" value="3" id="w-in">
-    <div id="msg" class="status safe">✔ 結構重心穩定</div>
-  </div>
-  <script>
-    const hI = document.getElementById('h-in'), wI = document.getElementById('w-in'), b = document.getElementById('bottle'), m = document.getElementById('msg');
-    function v() {
-      let h = hI.value, w = wI.value;
-      document.getElementById('h-txt').innerText = h; document.getElementById('w-txt').innerText = w;
-      let r = h / w; b.style.transform = `rotate(${(r-50)*0.2}deg)`;
-      if(r > 100) { m.innerText = "⚠️ 警報：重心偏移"; m.className = "status danger"; }
-      else { m.innerText = "✔ 結構重心穩定"; m.className = "status safe"; }
-    }
-    hI.oninput = v; wI.oninput = v;
-  </script>
-</body>
-</html>
+  );
+}
+
+function PresetButton({ label, status, isActive }: { label: string; status: string; isActive: boolean }) {
+  return (
+    <button className={`w-full p-4 border rounded flex justify-between items-center transition-all ${
+      isActive 
+        ? 'border-orange-500/50 bg-orange-500/10 text-white shadow-[inset_0_0_20px_rgba(234,88,12,0.05)]' 
+        : 'border-white/5 hover:bg-white/5 text-gray-500'
+    }`}>
+      <span className="text-sm uppercase tracking-[0.15em] font-medium">{label}</span>
+      <span className={`text-[10px] font-mono ${isActive ? 'text-orange-400 font-bold' : 'text-gray-600'}`}>{status}</span>
+    </button>
+  );
+}
+
+function PropertyRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between items-center border-b border-black/[0.03] pb-2">
+      <span className="text-[11px] text-black/50">{label}</span>
+      <span className="text-[11px] tech-value uppercase">{value}</span>
+    </div>
+  );
+}
+
