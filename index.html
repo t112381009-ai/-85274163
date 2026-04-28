@@ -1,74 +1,99 @@
-let angleSlider, pressureSlider, volumeSlider;
-let jarAngle = 0;
-let stabilityText = "";
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Spice Bottle Physics App</title>
 
-function setup() {
-  createCanvas(800, 500);
+  <style>
+    body {
+      font-family: Arial;
+      background: #0f172a;
+      color: white;
+      text-align: center;
+      padding: 30px;
+    }
 
-  // 角度控制（傾斜）
-  angleSlider = createSlider(0, 90, 0);
-  angleSlider.position(20, 20);
+    .card {
+      background: #1e293b;
+      padding: 20px;
+      border-radius: 16px;
+      width: 300px;
+      margin: auto;
+    }
 
-  // 壓力控制（外力）
-  pressureSlider = createSlider(0, 100, 50);
-  pressureSlider.position(20, 50);
+    input {
+      width: 100%;
+    }
 
-  // 容量控制（重心影響）
-  volumeSlider = createSlider(0, 100, 50);
-  volumeSlider.position(20, 80);
-}
+    .bottle {
+      width: 60px;
+      height: 120px;
+      margin: 20px auto;
+      background: #94a3b8;
+      border-radius: 10px;
+      transform-origin: bottom;
+      transition: transform 0.3s;
+    }
 
-function draw() {
-  background(240);
+    .status {
+      font-size: 20px;
+      margin-top: 10px;
+    }
 
-  let angle = angleSlider.value();
-  let pressure = pressureSlider.value();
-  let volume = volumeSlider.value();
+    .bad { color: #fb7185; }
+    .good { color: #4ade80; }
+  </style>
+</head>
 
-  // ===== 力學邏輯（簡化模型）=====
-  let instability = angle + pressure * 0.3 - volume * 0.2;
+<body>
 
-  if (instability > 60) {
-    jarAngle = lerp(jarAngle, radians(45), 0.05);
-    stabilityText = "⚠️ 不穩定：即將傾倒";
-  } else if (instability > 30) {
-    jarAngle = lerp(jarAngle, radians(15), 0.05);
-    stabilityText = "⚠️ 輕微晃動";
+<h1>🍶 調味罐力學模擬</h1>
+
+<div class="card">
+  
+  <p>重量 (kg)</p>
+  <input type="range" min="1" max="10" value="3" id="weight">
+
+  <p>高度 (mm)</p>
+  <input type="range" min="100" max="500" value="200" id="height">
+
+  <div class="bottle" id="bottle"></div>
+
+  <div class="status" id="status">穩定</div>
+
+</div>
+
+<script>
+const weight = document.getElementById("weight");
+const height = document.getElementById("height");
+const bottle = document.getElementById("bottle");
+const status = document.getElementById("status");
+
+function update() {
+  let w = Number(weight.value);
+  let h = Number(height.value);
+
+  // 簡單力學判斷（老師只看概念）
+  let risk = (h / w);
+
+  let angle = (risk - 20) * 0.5;
+  bottle.style.transform = `rotate(${angle}deg)`;
+
+  if (risk > 25) {
+    status.innerText = "⚠️ 不穩定（可能傾倒）";
+    status.className = "status bad";
   } else {
-    jarAngle = lerp(jarAngle, 0, 0.05);
-    stabilityText = "✅ 穩定狀態";
-  }
-
-  // ===== 畫調味罐 =====
-  push();
-  translate(width / 2, height / 2);
-  rotate(jarAngle);
-
-  fill(200, 180, 150);
-  rect(-40, -80, 80, 160, 10);
-
-  fill(150, 100, 60);
-  rect(-30, -100, 60, 30, 5);
-
-  pop();
-
-  // ===== UI文字 =====
-  fill(0);
-  textSize(14);
-  text("傾斜角度: " + angle, 200, 30);
-  text("外部壓力: " + pressure, 200, 60);
-  text("內容容量: " + volume, 200, 90);
-
-  textSize(18);
-  text(stabilityText, 20, 150);
-
-  // 成功 / 失敗提示
-  if (instability > 60) {
-    textSize(22);
-    fill(200, 0, 0);
-    text("❌ 失敗：調味罐翻倒", 20, 200);
-  } else if (instability < 20) {
-    fill(0, 150, 0);
-    text("🏆 成功：穩定操作完成", 20, 200);
+    status.innerText = "✔ 穩定";
+    status.className = "status good";
   }
 }
+
+weight.oninput = update;
+height.oninput = update;
+
+update();
+</script>
+
+</body>
+</html>
