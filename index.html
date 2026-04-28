@@ -2,132 +2,101 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>SPICECORE PRO | 結構穩定性分析系統</title>
+    <title>SPICECORE PRO | 工業設計結構應力實驗室</title>
     <style>
-        :root { --bg: #0b0e14; --panel: #161b22; --accent: #f97316; --safe: #22c55e; --danger: #f43f5e; --text: #e6edf3; }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        :root { --bg: #0d1117; --panel: #161b22; --accent: #f97316; --safe: #238636; --danger: #da3633; --text: #e6edf3; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'JetBrains Mono', 'Segoe UI', monospace; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
         
-        /* 左側控制面板 */
-        .sidebar { width: 320px; background: var(--panel); padding: 25px; border-right: 1px solid #30363d; display: flex; flex-direction: column; gap: 20px; }
-        .logo { font-size: 1.2rem; font-weight: 800; letter-spacing: 2px; color: var(--accent); border-bottom: 2px solid #30363d; padding-bottom: 10px; }
-        .control-group { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; }
-        label { display: block; font-size: 12px; color: #8b949e; margin-bottom: 8px; }
-        input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
-        .val-display { float: right; color: var(--accent); font-weight: bold; }
+        /* 左側：5軸操控面板 */
+        .sidebar { width: 340px; background: var(--panel); padding: 20px; border-right: 1px solid #30363d; display: flex; flex-direction: column; gap: 15px; overflow-y: auto; }
+        .logo { font-size: 14px; font-weight: bold; color: var(--accent); border-bottom: 1px solid #30363d; padding-bottom: 10px; margin-bottom: 5px; }
+        .control-card { background: rgba(0,0,0,0.3); padding: 12px; border-radius: 6px; border: 1px solid #30363d; }
+        label { display: block; font-size: 11px; color: #8b949e; margin-bottom: 6px; text-transform: uppercase; }
+        input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; height: 4px; }
+        .val { float: right; color: var(--accent); font-size: 14px; }
 
-        /* 中間模擬區 */
-        .viewport { flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; background-image: radial-gradient(#30363d 1px, transparent 1px); background-size: 30px 30px; }
-        .status-badge { position: absolute; top: 20px; left: 20px; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; border: 1px solid var(--safe); color: var(--safe); }
-        .bottle-stage { width: 100px; height: 250px; position: relative; transform-origin: bottom center; transition: 0.1s; }
-        .cap { background: #d2b48c; height: 40px; border-radius: 10px 10px 2px 2px; }
-        .glass-body { background: rgba(255,255,255,0.05); height: 160px; border: 2px solid rgba(255,255,255,0.2); border-radius: 2px 2px 15px 15px; backdrop-filter: blur(8px); position: relative; overflow: hidden; }
-        .pepper-content { position: absolute; bottom: 0; width: 100%; background: #3d2b1f; transition: 0.3s; }
-        
-        /* 右側物理公式區 */
-        .formula-panel { width: 350px; background: var(--panel); padding: 25px; border-left: 1px solid #30363d; font-family: 'Courier New', monospace; }
-        .formula-card { background: #0d1117; padding: 15px; border-radius: 6px; margin-bottom: 15px; border-left: 4px solid var(--accent); }
-        .math { font-size: 18px; margin: 10px 0; color: #58a6ff; }
-        
-        /* 警報效果 */
-        .critical { animation: shake 0.2s infinite; }
-        @keyframes shake { 0% { transform: translate(1px, 1px); } 50% { transform: translate(-1px, -1px); } 100% { transform: translate(1px, -1px); } }
+        /* 中間：物理模擬視窗 */
+        .main-view { flex: 1; position: relative; background-image: radial-gradient(#21262d 1px, transparent 1px); background-size: 20px 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .bottle-stage { width: 120px; height: 280px; position: relative; transform-origin: bottom center; transition: 0.1s cubic-bezier(0.17, 0.67, 0.83, 0.67); }
+        .cap { background: #d2b48c; height: 45px; border-radius: 10px 10px 2px 2px; border-bottom: 3px solid rgba(0,0,0,0.2); }
+        .glass { background: rgba(255,255,255,0.08); height: 180px; border: 2px solid rgba(255,255,255,0.2); border-radius: 2px 2px 15px 15px; backdrop-filter: blur(10px); position: relative; overflow: hidden; }
+        .fill { position: absolute; bottom: 0; width: 100%; background: linear-gradient(transparent, #4a3728); transition: 0.5s; }
+        .impact-vibration { animation: vibrate 0.1s infinite; }
+        @keyframes vibrate { 0% { transform: translate(1px); } 50% { transform: translate(-1px); } 100% { transform: translate(0px); } }
+
+        /* 右側：公式運算區 (連動妳的截圖風格) */
+        .data-panel { width: 360px; background: var(--panel); padding: 20px; border-left: 1px solid #30363d; }
+        .formula-box { background: #0d1117; padding: 15px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #30363d; }
+        .math { font-size: 16px; color: #58a6ff; margin-bottom: 8px; }
+        .calculation { font-size: 12px; color: #8b949e; line-height: 1.6; }
+        .critical-text { color: var(--danger); font-weight: bold; font-size: 18px; margin-top: 10px; display: none; }
+
+        /* 數值大盤 */
+        .big-display { font-size: 64px; font-weight: 800; color: var(--text); letter-spacing: -3px; }
     </style>
 </head>
 <body>
     <div class="sidebar">
-        <div class="logo">DESIGN SAFETY LAB</div>
-        <div class="control-group">
-            <label>載重 P (kg) <span class="val-display" id="w-val">5.0</span></label>
-            <input type="range" min="1" max="50" step="0.5" value="5" id="weight">
+        <div class="logo">SPICECORE ANALYTICS v2.0</div>
+        
+        <div class="control-card">
+            <label>1. 內容載重 P (kg) <span class="val" id="v1">5.0</span></label>
+            <input type="range" min="1" max="50" step="0.5" value="5" id="p1">
         </div>
-        <div class="control-group">
-            <label>長度 L (mm) <span class="val-display" id="l-val">150</span></label>
-            <input type="range" min="50" max="500" value="150" id="length">
+        <div class="control-card">
+            <label>2. 外部壓力 F (N) <span class="val" id="v2">0</span></label>
+            <input type="range" min="0" max="1000" value="0" id="p2">
         </div>
-        <div class="control-group">
-            <label>側向施力 F (N) <span class="val-display" id="f-val">0</span></label>
-            <input type="range" min="0" max="200" value="0" id="force">
+        <div class="control-card">
+            <label>3. 扭轉力矩 τ (Nm) <span class="val" id="v3">0</span></label>
+            <input type="range" min="0" max="200" value="0" id="p3">
+        </div>
+        <div class="control-card">
+            <label>4. 槓桿長度 L (mm) <span class="val" id="v4">150</span></label>
+            <input type="range" min="50" max="400" value="150" id="p4">
+        </div>
+        <div class="control-card">
+            <label>5. 衝擊加速度 G (m/s²) <span class="val" id="v5">9.8</span></label>
+            <input type="range" min="9.8" max="100" step="1" value="9.8" id="p5">
         </div>
     </div>
 
-    <div class="viewport" id="v-port">
-        <div class="status-badge" id="status">✔ 結構安全穩定</div>
+    <div class="main-view">
+        <div id="status-tag" style="position: absolute; top: 20px; border: 1px solid var(--safe); color: var(--safe); padding: 4px 12px; border-radius: 4px; font-size: 12px;">SYSTEM STABLE</div>
         <div class="bottle-stage" id="bottle">
             <div class="cap"></div>
-            <div class="glass-body">
-                <div class="pepper-content" id="pepper-fill" style="height: 40%;"></div>
+            <div class="glass">
+                <div class="fill" id="fill-level" style="height: 30%;"></div>
             </div>
         </div>
-        <h2 id="real-time-val" style="font-size: 4rem; margin-top: 30px; letter-spacing: -2px;">0.00</h2>
-        <p style="color: var(--text-secondary);">REAL-WORLD DEFLECTION (Δ)</p>
+        <div class="big-display" id="total-stress">0.00</div>
+        <p style="color: #8b949e; font-size: 12px;">TOTAL STRUCTURAL STRESS (MPa)</p>
     </div>
 
-    <div class="formula-panel">
-        <p style="color: #8b949e; font-size: 11px;">STEP 01: 慣性矩計算</p>
-        <div class="formula-card">
-            <div class="math">I = (b * h³) / 12</div>
-            <div id="math-1" style="font-size: 12px; color: #8b949e;">I = (70 * 160³) / 12 = ...</div>
+    <div class="data-panel">
+        <p style="font-size: 11px; color: #8b949e; margin-bottom: 10px;">REAL-TIME PHYSICS CALCULATION</p>
+        
+        <div class="formula-box">
+            <div class="math">σ = (F / A) + (Mc / I)</div>
+            <div class="calculation" id="calc-1">計算中...</div>
         </div>
-        <p style="color: #8b949e; font-size: 11px;">STEP 02: 轉矩分析 (Torque)</p>
-        <div class="formula-card">
-            <div class="math">τ = F * L</div>
-            <div id="math-2" style="font-size: 12px; color: #8b949e;">τ = 0 * 150 = 0 Nm</div>
+
+        <div class="formula-box">
+            <div class="math">τ = (T * r) / J</div>
+            <div class="calculation" id="calc-2">扭矩剪應力分析...</div>
         </div>
-        <div id="alert-box" style="padding: 20px; border-radius: 6px; text-align: center; font-weight: bold; display: none;">
-            ⚠️ 結構崩潰 / 超載報警
+
+        <div class="formula-box" id="impact-box">
+            <div class="math">F_impact = m * G</div>
+            <div class="calculation" id="calc-3">衝擊力模擬中...</div>
         </div>
+
+        <div id="danger-msg" class="critical-text">⚠️ CRITICAL FAILURE: BEYOND YIELD POINT</div>
     </div>
 
     <script>
-        const inputs = ['weight', 'length', 'force'];
+        const ids = ['p1', 'p2', 'p3', 'p4', 'p5'];
         const bottle = document.getElementById('bottle');
-        const status = document.getElementById('status');
-        const alertBox = document.getElementById('alert-box');
-
-        function update() {
-            const P = parseFloat(document.getElementById('weight').value);
-            const L = parseFloat(document.getElementById('length').value);
-            const F = parseFloat(document.getElementById('force').value);
-
-            // 更新顯示數值
-            document.getElementById('w-val').innerText = P.toFixed(1);
-            document.getElementById('l-val').innerText = L;
-            document.getElementById('f-val').innerText = F;
-
-            // 物理計算邏輯
-            const torque = (F * L / 1000).toFixed(2);
-            const deflection = (torque * 15.5).toFixed(2); // 模擬位移公式
-            document.getElementById('real-time-val').innerText = deflection;
-
-            // 更新右側公式內容
-            document.getElementById('math-2').innerText = `τ = ${F} * ${L} = ${torque} Nm`;
-
-            // 動態視覺反饋
-            const angle = F * 0.2;
-            bottle.style.transform = `rotate(${angle}deg)`;
-            document.getElementById('pepper-fill').style.height = `${Math.min(P * 2, 100)}%`;
-
-            // 警報邏輯 (參考截圖中的紅色報警)
-            if (deflection > 150) {
-                document.body.style.boxShadow = "inset 0 0 100px rgba(244, 63, 94, 0.3)";
-                status.innerText = "✖ CRITICAL FAILURE";
-                status.style.borderColor = "var(--danger)";
-                status.style.color = "var(--danger)";
-                alertBox.style.display = "block";
-                alertBox.style.background = "var(--danger)";
-                bottle.classList.add('critical');
-            } else {
-                document.body.style.boxShadow = "none";
-                status.innerText = "✔ 結構安全穩定";
-                status.style.borderColor = "var(--safe)";
-                status.style.color = "var(--safe)";
-                alertBox.style.display = "none";
-                bottle.classList.remove('critical');
-            }
-        }
-
-        inputs.forEach(id => document.getElementById(id).oninput = update);
-        update();
-    </script>
-</body>
-</html>
+        const dangerMsg = document.getElementById('danger-msg');
+        const statusTag = document.
