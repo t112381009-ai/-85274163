@@ -2,116 +2,57 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>SPICECORE PRO | 結構穩定性實驗室</title>
+    <title>SPICECORE PRO | 結構穩定性分析系統</title>
     <style>
         :root { --bg: #0d1117; --panel: #161b22; --accent: #f97316; --safe: #238636; --danger: #da3633; --text: #e6edf3; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'JetBrains Mono', monospace; }
         body { background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
         
         /* 控制面板 */
-        .sidebar { width: 340px; background: var(--panel); padding: 25px; border-right: 1px solid #30363d; display: flex; flex-direction: column; gap: 20px; z-index: 10; }
-        .logo { font-size: 14px; color: var(--accent); font-weight: 800; border-bottom: 1px solid #30363d; padding-bottom: 15px; }
-        .control-item { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border: 1px solid #30363d; }
-        label { display: block; font-size: 11px; color: #8b949e; margin-bottom: 10px; }
+        .sidebar { width: 340px; background: var(--panel); padding: 25px; border-right: 1px solid #30363d; display: flex; flex-direction: column; gap: 15px; z-index: 10; overflow-y: auto; }
+        .logo { font-size: 14px; color: var(--accent); font-weight: 800; border-bottom: 1px solid #30363d; padding-bottom: 15px; margin-bottom: 10px; }
+        .control-item { background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; border: 1px solid #30363d; }
+        label { display: block; font-size: 11px; color: #8b949e; margin-bottom: 8px; text-transform: uppercase; }
         input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
-        .val-num { float: right; color: var(--accent); font-weight: bold; }
+        .val-num { float: right; color: var(--accent); font-weight: bold; font-size: 14px; }
 
-        /* 中央模擬視窗 */
+        /* 中央模擬區 */
         .main-stage { flex: 1; position: relative; background-image: radial-gradient(#21262d 1px, transparent 1px); background-size: 30px 30px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         
-        /* 調味罐視覺核心 (這裡會跟著變) */
-        .bottle-wrapper { position: relative; width: 120px; height: 300px; display: flex; flex-direction: column; align-items: center; transform-origin: bottom center; transition: transform 0.1s linear; }
-        .cap { background: #d2b48c; height: 50px; width: 90px; border-radius: 12px 12px 4px 4px; border-bottom: 4px solid rgba(0,0,0,0.2); z-index: 2; transition: all 0.2s; }
-        .glass-body { background: rgba(255,255,255,0.1); height: 180px; width: 85px; border: 2px solid rgba(255,255,255,0.3); border-radius: 4px 4px 15px 15px; backdrop-filter: blur(10px); position: relative; overflow: hidden; margin-top: -2px; }
-        .content-fill { position: absolute; bottom: 0; width: 100%; background: #4a3728; transition: height 0.3s ease-out; }
+        /* 【關鍵】連動主體結構 */
+        .bottle-container { position: relative; display: flex; flex-direction: column; align-items: center; transform-origin: bottom center; will-change: transform; }
+        .cap { background: #d2b48c; height: 45px; width: 90px; border-radius: 10px 10px 2px 2px; border-bottom: 4px solid rgba(0,0,0,0.2); z-index: 2; }
+        .glass-body { background: rgba(255,255,255,0.1); width: 85px; border: 2px solid rgba(255,255,255,0.3); border-radius: 2px 2px 15px 15px; backdrop-filter: blur(10px); position: relative; overflow: hidden; margin-top: -2px; }
+        .content-fill { position: absolute; bottom: 0; width: 100%; background: linear-gradient(to top, #4a3728, #5d4637); transition: height 0.2s; }
 
         /* 數值大盤 */
-        .big-data { font-size: 80px; font-weight: 900; letter-spacing: -4px; margin-top: 20px; color: #fff; }
-        .unit-label { font-size: 12px; color: #8b949e; letter-spacing: 2px; }
+        .big-data { font-size: 72px; font-weight: 900; letter-spacing: -3px; margin-top: 20px; color: #fff; line-height: 1; }
+        .unit-label { font-size: 11px; color: #8b949e; letter-spacing: 2px; margin-top: 5px; }
 
-        /* 右側公式 (連動妳的截圖) */
-        .data-panel { width: 360px; background: var(--panel); padding: 25px; border-left: 1px solid #30363d; }
+        /* 右側公式區 (連動妳的截圖風格) */
+        .data-panel { width: 360px; background: var(--panel); padding: 25px; border-left: 1px solid #30363d; overflow-y: auto; }
         .formula-card { background: #0d1117; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid var(--accent); }
-        .math-title { font-size: 11px; color: #8b949e; margin-bottom: 10px; }
+        .math-title { font-size: 10px; color: #8b949e; margin-bottom: 8px; text-transform: uppercase; }
         .math-exp { font-size: 16px; color: #58a6ff; margin-bottom: 5px; }
-        .math-res { font-size: 12px; color: #d1d5da; }
+        .math-res { font-size: 12px; color: #d1d5da; font-family: monospace; }
+        #alarm-text { color: var(--danger); font-weight: bold; text-align: center; margin-top: 10px; display: none; border: 1px solid var(--danger); padding: 10px; }
     </style>
 </head>
 <body>
     <div class="sidebar">
-        <div class="logo">SPICECORE DYNAMICS LAB</div>
+        <div class="logo">SPICECORE STRESS TEST v3.0</div>
         <div class="control-item">
-            <label>1. 內容載重 (kg) <span class="val-num" id="v1">5.0</span></label>
+            <label>1. 內容載重 Mass (kg) <span class="val-num" id="v1">5.0</span></label>
             <input type="range" min="1" max="50" step="0.5" value="5" id="p1">
         </div>
         <div class="control-item">
-            <label>2. 外部側壓力 (N) <span class="val-num" id="v2">0</span></label>
+            <label>2. 外部壓力 Force (N) <span class="val-num" id="v2">0</span></label>
             <input type="range" min="0" max="1500" value="0" id="p2">
         </div>
         <div class="control-item">
-            <label>3. 操作扭力 (Nm) <span class="val-num" id="v3">0</span></label>
+            <label>3. 操作扭力 Torque (Nm) <span class="val-num" id="v3">0</span></label>
             <input type="range" min="0" max="300" value="0" id="p3">
         </div>
         <div class="control-item">
-            <label>4. 罐身高度 (mm) <span class="val-num" id="v4">200</span></label>
-            <input type="range" min="100" max="400" value="200" id="p4">
-        </div>
-        <div class="control-item">
-            <label>5. 衝擊 G 力 (m/s²) <span class="val-num" id="v5">9.8</span></label>
-            <input type="range" min="9.8" max="200" step="1" value="9.8" id="p5">
-        </div>
-    </div>
-
-    <div class="main-stage">
-        <div id="status" style="padding: 5px 15px; border: 1px solid var(--safe); color: var(--safe); border-radius: 20px; font-size: 12px; position: absolute; top: 30px;">✔ STATUS: NOMINAL</div>
-        
-        <div class="bottle-wrapper" id="bottle-obj">
-            <div class="cap" id="cap-obj"></div>
-            <div class="glass-body" id="body-obj">
-                <div class="content-fill" id="fill-obj"></div>
-            </div>
-        </div>
-
-        <div class="big-data" id="stress-display">0.00</div>
-        <div class="unit-label">TOTAL VECTOR STRESS (MPa)</div>
-    </div>
-
-    <div class="data-panel">
-        <div class="formula-card">
-            <div class="math-title">MOMENT ANALYSIS (力矩分析)</div>
-            <div class="math-exp">M = F * L</div>
-            <div class="math-res" id="calc-1">M = 0 * 200 = 0 Nmm</div>
-        </div>
-        <div class="formula-card">
-            <div class="math-title">TORSIONAL STRESS (扭轉應力)</div>
-            <div class="math-exp">τ = (T * r) / J</div>
-            <div class="math-res" id="calc-2">τ = 0 * 45 / J = 0 MPa</div>
-        </div>
-        <div class="formula-card">
-            <div class="math-title">IMPACT ENERGY (衝擊能量)</div>
-            <div class="math-exp">E = m * g * h</div>
-            <div class="math-res" id="calc-3">E = 5 * 9.8 * 200 = ...</div>
-        </div>
-        <div id="alarm" style="color: var(--danger); font-weight: bold; text-align: center; display: none; animation: flash 0.5s infinite;">⚠️ CRITICAL: STRUCTURAL FAILURE</div>
-    </div>
-
-    <script>
-        const inputs = ['p1', 'p2', 'p3', 'p4', 'p5'];
-        const bottle = document.getElementById('bottle-obj');
-        const fill = document.getElementById('fill-obj');
-        const cap = document.getElementById('cap-obj');
-        const body = document.getElementById('body-obj');
-
-        function updateSimulation() {
-            // 抓取 5 個滑桿的值
-            const m = parseFloat(document.getElementById('p1').value); // 載重
-            const F = parseFloat(document.getElementById('p2').value); // 側壓力
-            const T = parseFloat(document.getElementById('p3').value); // 扭力
-            const L = parseFloat(document.getElementById('p4').value); // 高度
-            const G = parseFloat(document.getElementById('p5').value); // G力
-
-            // 更新數字顯示
-            inputs.forEach((id, i) => document.getElementById('v' + (i + 1)).innerText = document.getElementById(id).value);
-
-            // --- 核心連動 1：罐子傾斜 (受側壓力與扭力影響) ---
-            const tiltAngle = (F * 0.03) + (T * 0.0
+            <label>4. 罐身高度 Length (mm) <span class="val-num" id="v4">200</span></label>
+            <input type="range" min="100
