@@ -1,43 +1,74 @@
-<!DOCTYPE html>
-<html lang="zh">
-<head>
-  <meta charset="UTF-8">
-  <title>調味罐力學模擬 APP</title>
-  <style>
-    body { font-family: sans-serif; background: #0f172a; color: white; text-align: center; padding: 20px; }
-    .card { background: #1e293b; padding: 25px; border-radius: 20px; width: 300px; margin: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-    .bottle-box { height: 200px; display: flex; align-items: flex-end; justify-content: center; margin-bottom: 20px; }
-    .bottle { width: 70px; transform-origin: bottom center; transition: transform 0.2s; }
-    .cap { background: #d2b48c; height: 35px; border-radius: 8px 8px 2px 2px; } /* 米色蓋子 */
-    .body { background: rgba(255,255,255,0.15); height: 110px; border: 2px solid rgba(255,255,255,0.4); border-radius: 2px 2px 10px 10px; backdrop-filter: blur(5px); } /* 透明罐身 */
-    input { width: 100%; margin: 15px 0; accent-color: #d2b48c; }
-    .status { padding: 12px; border-radius: 8px; margin-top: 15px; font-weight: bold; }
-    .safe { background: #064e3b; color: #6ee7b7; }
-    .danger { background: #7f1d1d; color: #fca5a5; }
-  </style>
-</head>
-<body>
-  <h1>🍶 產品力學穩定度模擬</h1>
-  <div class="card">
-    <div class="bottle-box">
-      <div class="bottle" id="bottle"><div class="cap"></div><div class="body"></div></div>
-    </div>
-    <p>重心高度: <span id="h-txt">150</span>mm</p>
-    <input type="range" min="100" max="400" value="150" id="h-in">
-    <p>內容重量: <span id="w-txt">3</span>kg</p>
-    <input type="range" min="1" max="10" value="3" id="w-in">
-    <div id="msg" class="status safe">✔ 結構重心穩定</div>
-  </div>
-  <script>
-    const hI = document.getElementById('h-in'), wI = document.getElementById('w-in'), b = document.getElementById('bottle'), m = document.getElementById('msg');
-    function v() {
-      let h = hI.value, w = wI.value;
-      document.getElementById('h-txt').innerText = h; document.getElementById('w-txt').innerText = w;
-      let r = h / w; b.style.transform = `rotate(${(r-50)*0.2}deg)`;
-      if(r > 100) { m.innerText = "⚠️ 警報：重心偏移"; m.className = "status danger"; }
-      else { m.innerText = "✔ 結構重心穩定"; m.className = "status safe"; }
-    }
-    hI.oninput = v; wI.oninput = v;
-  </script>
-</body>
-</html>
+let angleSlider, pressureSlider, volumeSlider;
+let jarAngle = 0;
+let stabilityText = "";
+
+function setup() {
+  createCanvas(800, 500);
+
+  // 角度控制（傾斜）
+  angleSlider = createSlider(0, 90, 0);
+  angleSlider.position(20, 20);
+
+  // 壓力控制（外力）
+  pressureSlider = createSlider(0, 100, 50);
+  pressureSlider.position(20, 50);
+
+  // 容量控制（重心影響）
+  volumeSlider = createSlider(0, 100, 50);
+  volumeSlider.position(20, 80);
+}
+
+function draw() {
+  background(240);
+
+  let angle = angleSlider.value();
+  let pressure = pressureSlider.value();
+  let volume = volumeSlider.value();
+
+  // ===== 力學邏輯（簡化模型）=====
+  let instability = angle + pressure * 0.3 - volume * 0.2;
+
+  if (instability > 60) {
+    jarAngle = lerp(jarAngle, radians(45), 0.05);
+    stabilityText = "⚠️ 不穩定：即將傾倒";
+  } else if (instability > 30) {
+    jarAngle = lerp(jarAngle, radians(15), 0.05);
+    stabilityText = "⚠️ 輕微晃動";
+  } else {
+    jarAngle = lerp(jarAngle, 0, 0.05);
+    stabilityText = "✅ 穩定狀態";
+  }
+
+  // ===== 畫調味罐 =====
+  push();
+  translate(width / 2, height / 2);
+  rotate(jarAngle);
+
+  fill(200, 180, 150);
+  rect(-40, -80, 80, 160, 10);
+
+  fill(150, 100, 60);
+  rect(-30, -100, 60, 30, 5);
+
+  pop();
+
+  // ===== UI文字 =====
+  fill(0);
+  textSize(14);
+  text("傾斜角度: " + angle, 200, 30);
+  text("外部壓力: " + pressure, 200, 60);
+  text("內容容量: " + volume, 200, 90);
+
+  textSize(18);
+  text(stabilityText, 20, 150);
+
+  // 成功 / 失敗提示
+  if (instability > 60) {
+    textSize(22);
+    fill(200, 0, 0);
+    text("❌ 失敗：調味罐翻倒", 20, 200);
+  } else if (instability < 20) {
+    fill(0, 150, 0);
+    text("🏆 成功：穩定操作完成", 20, 200);
+  }
+}
